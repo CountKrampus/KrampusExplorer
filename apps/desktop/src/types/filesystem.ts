@@ -9,6 +9,7 @@ export interface EntryInfo {
   path: string;
   isDir: boolean;
   size: number | null;
+  /** Unix epoch seconds as a string, or null if the OS didn't report a modified time. */
   modified: string | null;
 }
 
