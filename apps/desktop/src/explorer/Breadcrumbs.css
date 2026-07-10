@@ -1,0 +1,28 @@
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.breadcrumbs__crumb {
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.breadcrumbs__crumb:hover {
+  text-decoration: underline;
+}
+
+.breadcrumbs__separator {
+  margin: 0 2px;
+  color: var(--fg-muted);
+}

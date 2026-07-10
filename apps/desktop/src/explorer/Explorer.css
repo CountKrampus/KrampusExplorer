@@ -1,0 +1,12 @@
+.explorer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.explorer__content {
+  flex: 1;
+  overflow-y: auto;
+}

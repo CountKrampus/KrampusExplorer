@@ -1,0 +1,44 @@
+.tab-bar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab-bar__tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 10px;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tab-bar__tab--active {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.tab-bar__close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+}
+
+.tab-bar__new {
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  padding: 0 10px;
+  height: 100%;
+}
