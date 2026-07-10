@@ -1,0 +1,11 @@
+[package]
+name = "explorer-filesystem"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "explorer_filesystem"
+path = "src/lib.rs"
+
+[dependencies]

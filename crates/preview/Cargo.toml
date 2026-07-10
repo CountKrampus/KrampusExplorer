@@ -1,0 +1,11 @@
+[package]
+name = "explorer-preview"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "explorer_preview"
+path = "src/lib.rs"
+
+[dependencies]
