@@ -20,11 +20,16 @@ function loadStoredTheme(): StoredTheme {
   if (!raw) return DEFAULTS;
   try {
     const parsed = JSON.parse(raw) as Partial<StoredTheme>;
+    const theme =
+      parsed.theme === "light" || parsed.theme === "dark" || parsed.theme === "system"
+        ? parsed.theme
+        : DEFAULTS.theme;
     return {
-      theme: parsed.theme ?? DEFAULTS.theme,
+      theme,
       accentColor: parsed.accentColor ?? DEFAULTS.accentColor,
     };
-  } catch {
+  } catch (err) {
+    console.warn("Failed to parse stored theme, using defaults", err);
     return DEFAULTS;
   }
 }
