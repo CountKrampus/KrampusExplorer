@@ -5,6 +5,7 @@ export interface Tab {
   id: string;
   history: string[];
   historyIndex: number;
+  /** The parent of the tab's current path, as of the last completed fetch — not the in-flight one. Stale between navigateTo firing and setTabResult resolving. */
   parent: string | null;
   entries: EntryInfo[];
   loading: boolean;
@@ -94,8 +95,12 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
   closeTab: (id) =>
     set((state) => {
       if (state.tabs.length <= 1) return state;
+      const closedIndex = state.tabs.findIndex((tab) => tab.id === id);
       const tabs = state.tabs.filter((tab) => tab.id !== id);
-      const activeTabId = state.activeTabId === id ? tabs[tabs.length - 1].id : state.activeTabId;
+      const activeTabId =
+        state.activeTabId === id
+          ? tabs[Math.min(closedIndex, tabs.length - 1)].id
+          : state.activeTabId;
       return { tabs, activeTabId };
     }),
 

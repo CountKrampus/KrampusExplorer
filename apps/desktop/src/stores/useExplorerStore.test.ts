@@ -102,4 +102,18 @@ describe("useExplorerStore", () => {
     expect(useExplorerStore.getState().tabs).toHaveLength(1);
     expect(useExplorerStore.getState().tabs[0].history).toEqual(["D:\\"]);
   });
+
+  it("closeTab activates the adjacent tab, not always the last tab", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    useExplorerStore.getState().newTab("D:\\");
+    useExplorerStore.getState().newTab("E:\\");
+    const [first, second, third] = useExplorerStore.getState().tabs;
+    useExplorerStore.getState().setActiveTab(second.id);
+
+    useExplorerStore.getState().closeTab(second.id);
+
+    const state = useExplorerStore.getState();
+    expect(state.tabs.map((t) => t.id)).toEqual([first.id, third.id]);
+    expect(state.activeTabId).toBe(third.id);
+  });
 });
