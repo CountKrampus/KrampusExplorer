@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
+import { useSearchStore } from "../stores/useSearchStore";
 import { performTransfer } from "../services/fileTransfer";
 import { uniqueName } from "../utils/uniqueName";
 import "./Toolbar.css";
@@ -12,6 +13,8 @@ function Toolbar() {
   const refresh = useExplorerStore((state) => state.refresh);
   const setSelected = useExplorerStore((state) => state.setSelected);
   const clipboard = useExplorerStore((state) => state.clipboard);
+  const searching = useSearchStore((state) => state.active);
+  const setSearchActive = useSearchStore((state) => state.setActive);
 
   const canGoBack = !!activeTab && activeTab.historyIndex > 0;
   const canGoForward = !!activeTab && activeTab.historyIndex < activeTab.history.length - 1;
@@ -62,6 +65,14 @@ function Toolbar() {
       </button>
       <button disabled={!canPaste} onClick={paste} aria-label="Paste">
         &#x1F4CB;
+      </button>
+      <button
+        disabled={!activeTab}
+        onClick={() => setSearchActive(!searching)}
+        aria-label="Search"
+        aria-pressed={searching}
+      >
+        &#x1F50D;
       </button>
       <span className="toolbar__path">{activeTab?.history[activeTab.historyIndex] ?? ""}</span>
     </div>

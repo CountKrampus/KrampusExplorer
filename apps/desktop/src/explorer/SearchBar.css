@@ -1,0 +1,142 @@
+.search-bar {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.search-bar__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+}
+
+.search-bar__close {
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 6px;
+}
+
+.search-bar__input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+}
+
+.search-bar__row button[type="submit"],
+.search-bar__row button[type="button"]:not(.search-bar__close) {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.search-bar__row button:hover {
+  background: var(--border);
+}
+
+.search-bar__panel {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  z-index: 50;
+  margin-top: 2px;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+}
+
+.search-bar__panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--fg-muted);
+  margin-bottom: 6px;
+}
+
+.search-bar__link {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.search-bar__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.search-bar__list li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+.search-bar__list li button:hover {
+  background: var(--bg-secondary);
+}
+
+.search-bar__saved-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.search-bar__saved-item button:first-child {
+  flex: 1;
+}
+
+.search-bar__empty {
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.search-bar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.search-bar__filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
+.search-bar__filters select,
+.search-bar__filters input {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 12px;
+}
