@@ -13,6 +13,7 @@ import SettingsPanel from "./settings/SettingsPanel";
 import { useActiveTab, useExplorerStore } from "./stores/useExplorerStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { usePluginStore } from "./stores/usePluginStore";
+import { useUpdateStore } from "./stores/useUpdateStore";
 import { useTabFetcher } from "./hooks/useTabFetcher";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import "./styles/theme.css";
@@ -85,6 +86,14 @@ function App() {
   }, [activeTab?.history, activeTab?.historyIndex, setLastLocation]);
 
   useTabFetcher();
+
+  const checkForUpdates = useUpdateStore((state) => state.checkForUpdates);
+  useEffect(() => {
+    // Silent on startup — no toast/dialog interrupts the user. Settings -> Updates shows the
+    // result once the check resolves, and offers a manual "Check for Updates" button too.
+    void checkForUpdates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (tabs.length === 0) {
     return (

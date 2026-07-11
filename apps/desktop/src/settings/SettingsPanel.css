@@ -164,3 +164,45 @@
   font-size: 11px;
   color: var(--danger);
 }
+
+.settings-panel__meta {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.settings-panel__empty--error {
+  color: var(--danger);
+}
+
+.settings-panel__update-available {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.settings-panel__update-notes {
+  color: var(--fg-muted);
+}
+
+.settings-panel__check-updates {
+  margin-top: 8px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.settings-panel__check-updates:hover {
+  background: var(--border);
+}
+
+.settings-panel__check-updates:disabled {
+  cursor: default;
+  opacity: 0.6;
+}

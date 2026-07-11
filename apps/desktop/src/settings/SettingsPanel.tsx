@@ -1,7 +1,9 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { useSettingsStore, type IconSize, type StartupMode, type Theme } from "../stores/useSettingsStore";
 import { usePluginStore } from "../stores/usePluginStore";
+import { useUpdateStore } from "../stores/useUpdateStore";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import "./SettingsPanel.css";
 
@@ -35,6 +37,22 @@ function SettingsPanelBody() {
   const pluginManifests = usePluginStore((state) => state.manifests);
   const pluginErrors = usePluginStore((state) => state.errors);
   const loadPlugins = usePluginStore((state) => state.loadPlugins);
+
+  const updateStatus = useUpdateStore((state) => state.status);
+  const updateVersion = useUpdateStore((state) => state.version);
+  const updateBody = useUpdateStore((state) => state.body);
+  const updateError = useUpdateStore((state) => state.error);
+  const downloadedBytes = useUpdateStore((state) => state.downloadedBytes);
+  const totalBytes = useUpdateStore((state) => state.totalBytes);
+  const checkForUpdates = useUpdateStore((state) => state.checkForUpdates);
+  const installUpdate = useUpdateStore((state) => state.installUpdate);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => setAppVersion(null));
+  }, []);
 
   const containerRef = useRef<HTMLDivElement>(null);
   useFocusTrap(containerRef, () => setOpen(false));
@@ -185,6 +203,44 @@ function SettingsPanelBody() {
               ))}
             </ul>
           )}
+        </section>
+
+        <section className="settings-panel__section">
+          <h3>Updates</h3>
+          <p className="settings-panel__meta">
+            Version {appVersion ?? "…"}
+          </p>
+          {updateStatus === "idle" || updateStatus === "checking" ? (
+            <p className="settings-panel__empty">
+              {updateStatus === "checking" ? "Checking for updates…" : "Not checked yet."}
+            </p>
+          ) : updateStatus === "up-to-date" ? (
+            <p className="settings-panel__empty">You're up to date.</p>
+          ) : updateStatus === "error" ? (
+            <p className="settings-panel__empty settings-panel__empty--error">{updateError}</p>
+          ) : updateStatus === "available" ? (
+            <div className="settings-panel__update-available">
+              <p>
+                Version {updateVersion} is available.
+                {updateBody && <span className="settings-panel__update-notes"> {updateBody}</span>}
+              </p>
+              <button type="button" onClick={() => void installUpdate()}>
+                Download and Install
+              </button>
+            </div>
+          ) : (
+            <p className="settings-panel__empty">
+              Downloading update{totalBytes ? ` (${Math.round((downloadedBytes / totalBytes) * 100)}%)` : "…"}
+            </p>
+          )}
+          <button
+            type="button"
+            className="settings-panel__check-updates"
+            disabled={updateStatus === "checking" || updateStatus === "downloading"}
+            onClick={() => void checkForUpdates()}
+          >
+            Check for Updates
+          </button>
         </section>
 
         <section className="settings-panel__section">
