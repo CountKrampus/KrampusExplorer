@@ -1,4 +1,5 @@
 import { useSettingsStore, type IconSize, type StartupMode, type Theme } from "../stores/useSettingsStore";
+import { usePluginStore } from "../stores/usePluginStore";
 import "./SettingsPanel.css";
 
 const SHORTCUTS: [string, string][] = [
@@ -23,6 +24,8 @@ function SettingsPanel() {
   const setStartupCustomPath = useSettingsStore((state) => state.setStartupCustomPath);
   const iconSize = useSettingsStore((state) => state.iconSize);
   const setIconSize = useSettingsStore((state) => state.setIconSize);
+  const pluginManifests = usePluginStore((state) => state.manifests);
+  const pluginErrors = usePluginStore((state) => state.errors);
 
   if (!open) return null;
 
@@ -103,6 +106,37 @@ function SettingsPanel() {
               </label>
             ))}
           </div>
+        </section>
+
+        <section className="settings-panel__section">
+          <h3>Plugins</h3>
+          {pluginManifests.length === 0 ? (
+            <p className="settings-panel__empty">
+              No plugins installed. Drop a plugin folder (with a manifest.json) into your plugins
+              directory and restart the app.
+            </p>
+          ) : (
+            <ul className="settings-panel__plugin-list">
+              {pluginManifests.map((plugin) => (
+                <li key={plugin.id}>
+                  <span className="settings-panel__plugin-name">{plugin.name}</span>
+                  <span className="settings-panel__plugin-meta">
+                    v{plugin.version} by {plugin.author}
+                    {plugin.permissions.length > 0 && ` — ${plugin.permissions.join(", ")}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {pluginErrors.length > 0 && (
+            <ul className="settings-panel__plugin-errors">
+              {pluginErrors.map((error) => (
+                <li key={error.pluginId}>
+                  {error.pluginId}: {error.message}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="settings-panel__section">

@@ -10,6 +10,7 @@ import ConflictDialog from "./components/ConflictDialog";
 import SettingsPanel from "./settings/SettingsPanel";
 import { useExplorerStore } from "./stores/useExplorerStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
+import { usePluginStore } from "./stores/usePluginStore";
 import { useTabFetcher } from "./hooks/useTabFetcher";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import "./styles/theme.css";
@@ -39,6 +40,12 @@ function App() {
   useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
+
+  const loadPlugins = usePluginStore((state) => state.loadPlugins);
+
+  useEffect(() => {
+    void loadPlugins();
+  }, [loadPlugins]);
 
   useEffect(() => {
     if (tabs.length !== 0 || !settingsLoaded) return;
