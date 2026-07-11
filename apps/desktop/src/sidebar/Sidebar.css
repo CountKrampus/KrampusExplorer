@@ -1,10 +1,31 @@
-.sidebar {
-  width: 200px;
+.sidebar-wrapper {
+  position: relative;
   flex-shrink: 0;
+  display: flex;
+}
+
+.sidebar {
+  width: 100%;
   overflow-y: auto;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
   padding: 8px 0;
+}
+
+.sidebar__resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.sidebar__resize-handle:hover,
+.sidebar__resize-handle:active {
+  background: var(--accent);
+  opacity: 0.4;
 }
 
 .sidebar__section {
@@ -16,6 +37,27 @@
   font-size: 11px;
   text-transform: uppercase;
   color: var(--fg-muted);
+}
+
+.sidebar__heading--button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sidebar__disclosure {
+  display: inline-block;
+  font-size: 9px;
+  transition: transform 0.1s ease;
+}
+
+.sidebar__disclosure--open {
+  transform: rotate(90deg);
 }
 
 .sidebar__list {
@@ -48,5 +90,66 @@
 }
 
 .sidebar__message--error {
+  color: var(--danger);
+}
+
+.sidebar__item--drive {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 12px;
+}
+
+.sidebar__drive-name {
+  font-size: 13px;
+}
+
+.sidebar__drive-bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.sidebar__drive-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.sidebar__drive-space {
+  font-size: 10px;
+  color: var(--fg-muted);
+}
+
+.sidebar__favorite-item {
+  display: flex;
+  align-items: center;
+}
+
+.sidebar__item--favorite {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__favorite-remove {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 4px 10px 4px 4px;
+  visibility: hidden;
+}
+
+.sidebar__favorite-item:hover .sidebar__favorite-remove {
+  visibility: visible;
+}
+
+.sidebar__favorite-remove:hover {
   color: var(--danger);
 }

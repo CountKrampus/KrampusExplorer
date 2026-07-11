@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { RegisteredSidebarPanel } from "../stores/usePluginStore";
+import CollapsibleSection from "./CollapsibleSection";
 
 interface PluginPanelProps {
   panel: RegisteredSidebarPanel;
@@ -32,8 +33,7 @@ function PluginPanel({ panel }: PluginPanelProps) {
   }, [panel.pluginId, panel.id]);
 
   return (
-    <div className="sidebar__section">
-      <div className="sidebar__heading">{panel.title}</div>
+    <CollapsibleSection sectionId={`${panel.pluginId}:${panel.id}`} title={panel.title}>
       {error ? (
         <p className="sidebar__message sidebar__message--error">
           "{panel.title}" failed to load: {error}
@@ -41,7 +41,7 @@ function PluginPanel({ panel }: PluginPanelProps) {
       ) : (
         <div ref={containerRef} />
       )}
-    </div>
+    </CollapsibleSection>
   );
 }
 

@@ -4,6 +4,11 @@ import { invoke } from "@tauri-apps/api/core";
 export type Theme = "light" | "dark" | "system";
 export type StartupMode = "home" | "custom" | "last";
 export type IconSize = "small" | "medium" | "large";
+export type SortField = "name" | "size" | "type" | "modified" | "created";
+export type SortDirection = "asc" | "desc";
+
+const MIN_SIDEBAR_WIDTH = 140;
+const MAX_SIDEBAR_WIDTH = 480;
 
 interface BackendSettings {
   theme: string;
@@ -13,6 +18,11 @@ interface BackendSettings {
   iconSize: string;
   lastLocation: string | null;
   disabledPlugins: string[];
+  favoritePaths: string[];
+  collapsedSidebarSections: string[];
+  sidebarWidth: number;
+  sortField: string;
+  sortDirection: string;
 }
 
 const DEFAULTS: BackendSettings = {
@@ -23,6 +33,11 @@ const DEFAULTS: BackendSettings = {
   iconSize: "medium",
   lastLocation: null,
   disabledPlugins: [],
+  favoritePaths: [],
+  collapsedSidebarSections: [],
+  sidebarWidth: 200,
+  sortField: "name",
+  sortDirection: "asc",
 };
 
 function asTheme(value: string): Theme {
@@ -37,6 +52,16 @@ function asIconSize(value: string): IconSize {
   return value === "small" || value === "large" ? value : "medium";
 }
 
+function asSortField(value: string): SortField {
+  return value === "size" || value === "type" || value === "modified" || value === "created"
+    ? value
+    : "name";
+}
+
+function asSortDirection(value: string): SortDirection {
+  return value === "desc" ? "desc" : "asc";
+}
+
 interface SettingsState {
   loaded: boolean;
   theme: Theme;
@@ -46,6 +71,11 @@ interface SettingsState {
   iconSize: IconSize;
   lastLocation: string | null;
   disabledPlugins: string[];
+  favoritePaths: string[];
+  collapsedSidebarSections: string[];
+  sidebarWidth: number;
+  sortField: SortField;
+  sortDirection: SortDirection;
   panelOpen: boolean;
   loadSettings: () => Promise<void>;
   setTheme: (theme: Theme) => void;
@@ -55,6 +85,11 @@ interface SettingsState {
   setIconSize: (size: IconSize) => void;
   setLastLocation: (path: string) => void;
   setPluginEnabled: (pluginId: string, enabled: boolean) => void;
+  addFavorite: (path: string) => void;
+  removeFavorite: (path: string) => void;
+  toggleSidebarSection: (sectionId: string) => void;
+  setSidebarWidth: (width: number) => void;
+  setSort: (field: SortField) => void;
   setPanelOpen: (open: boolean) => void;
 }
 
@@ -70,6 +105,11 @@ function persist(state: SettingsState) {
     iconSize: state.iconSize,
     lastLocation: state.lastLocation,
     disabledPlugins: state.disabledPlugins,
+    favoritePaths: state.favoritePaths,
+    collapsedSidebarSections: state.collapsedSidebarSections,
+    sidebarWidth: state.sidebarWidth,
+    sortField: state.sortField,
+    sortDirection: state.sortDirection,
   };
   invoke("save_settings", { settings: payload }).catch((error: string) => {
     console.error("Could not save settings:", error);
@@ -85,6 +125,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   iconSize: asIconSize(DEFAULTS.iconSize),
   lastLocation: DEFAULTS.lastLocation,
   disabledPlugins: DEFAULTS.disabledPlugins,
+  favoritePaths: DEFAULTS.favoritePaths,
+  collapsedSidebarSections: DEFAULTS.collapsedSidebarSections,
+  sidebarWidth: DEFAULTS.sidebarWidth,
+  sortField: asSortField(DEFAULTS.sortField),
+  sortDirection: asSortDirection(DEFAULTS.sortDirection),
   panelOpen: false,
 
   loadSettings: async () => {
@@ -98,6 +143,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         iconSize: asIconSize(settings.iconSize),
         lastLocation: settings.lastLocation,
         disabledPlugins: settings.disabledPlugins,
+        favoritePaths: settings.favoritePaths,
+        collapsedSidebarSections: settings.collapsedSidebarSections,
+        sidebarWidth: settings.sidebarWidth,
+        sortField: asSortField(settings.sortField),
+        sortDirection: asSortDirection(settings.sortDirection),
         loaded: true,
       });
     } catch {
@@ -146,6 +196,43 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         ? current
         : [...current, pluginId];
     set({ disabledPlugins });
+    persist(get());
+  },
+
+  addFavorite: (path) => {
+    const current = get().favoritePaths;
+    if (current.includes(path)) return;
+    set({ favoritePaths: [...current, path] });
+    persist(get());
+  },
+
+  removeFavorite: (path) => {
+    set({ favoritePaths: get().favoritePaths.filter((p) => p !== path) });
+    persist(get());
+  },
+
+  toggleSidebarSection: (sectionId) => {
+    const current = get().collapsedSidebarSections;
+    const collapsedSidebarSections = current.includes(sectionId)
+      ? current.filter((id) => id !== sectionId)
+      : [...current, sectionId];
+    set({ collapsedSidebarSections });
+    persist(get());
+  },
+
+  setSidebarWidth: (width) => {
+    const clamped = Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width));
+    set({ sidebarWidth: clamped });
+    persist(get());
+  },
+
+  setSort: (field) => {
+    const { sortField, sortDirection } = get();
+    if (field === sortField) {
+      set({ sortDirection: sortDirection === "asc" ? "desc" : "asc" });
+    } else {
+      set({ sortField: field, sortDirection: "asc" });
+    }
     persist(get());
   },
 
