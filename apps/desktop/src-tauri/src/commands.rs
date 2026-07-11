@@ -1,5 +1,5 @@
 use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo};
-use explorer_plugins::PluginManifest;
+use explorer_plugins::{CommandOutput, GitCommit, GitFileStatus, PluginManifest, TableData};
 use explorer_preview::TextPreview;
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
 use explorer_settings::Settings;
@@ -168,4 +168,67 @@ pub fn list_plugins() -> Vec<PluginManifest> {
 #[tauri::command]
 pub fn read_plugin_entry(path: String) -> Result<String, String> {
     explorer_plugins::read_entry(&path)
+}
+
+#[tauri::command]
+pub fn create_zip_archive(
+    source_paths: Vec<String>,
+    dest_zip_path: String,
+) -> Result<String, String> {
+    explorer_plugins::create_zip_archive(&source_paths, &dest_zip_path)
+}
+
+#[tauri::command]
+pub fn extract_zip_archive(zip_path: String, dest_dir: String) -> Result<String, String> {
+    explorer_plugins::extract_zip_archive(&zip_path, &dest_dir)
+}
+
+#[tauri::command]
+pub fn list_sqlite_tables(db_path: String) -> Result<Vec<String>, String> {
+    explorer_plugins::list_sqlite_tables(&db_path)
+}
+
+#[tauri::command]
+pub fn query_sqlite_table(
+    db_path: String,
+    table: String,
+    limit: u32,
+    offset: u32,
+) -> Result<TableData, String> {
+    explorer_plugins::query_sqlite_table(&db_path, &table, limit, offset)
+}
+
+#[tauri::command]
+pub async fn list_mongo_databases(uri: String) -> Result<Vec<String>, String> {
+    explorer_plugins::list_mongo_databases(&uri).await
+}
+
+#[tauri::command]
+pub async fn list_mongo_collections(uri: String, db_name: String) -> Result<Vec<String>, String> {
+    explorer_plugins::list_mongo_collections(&uri, &db_name).await
+}
+
+#[tauri::command]
+pub async fn query_mongo_collection(
+    uri: String,
+    db_name: String,
+    collection: String,
+    limit: i64,
+) -> Result<Vec<String>, String> {
+    explorer_plugins::query_mongo_collection(&uri, &db_name, &collection, limit).await
+}
+
+#[tauri::command]
+pub fn git_status(repo_path: String) -> Result<Vec<GitFileStatus>, String> {
+    explorer_plugins::git_status(&repo_path)
+}
+
+#[tauri::command]
+pub fn git_log(repo_path: String, limit: u32) -> Result<Vec<GitCommit>, String> {
+    explorer_plugins::git_log(&repo_path, limit)
+}
+
+#[tauri::command]
+pub fn run_command(command: String, cwd: String) -> Result<CommandOutput, String> {
+    explorer_plugins::run_command(&command, &cwd)
 }

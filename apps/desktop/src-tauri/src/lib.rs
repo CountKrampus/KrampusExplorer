@@ -27,6 +27,16 @@ pub fn run() {
             commands::save_settings,
             commands::list_plugins,
             commands::read_plugin_entry,
+            commands::create_zip_archive,
+            commands::extract_zip_archive,
+            commands::list_sqlite_tables,
+            commands::query_sqlite_table,
+            commands::list_mongo_databases,
+            commands::list_mongo_collections,
+            commands::query_mongo_collection,
+            commands::git_status,
+            commands::git_log,
+            commands::run_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

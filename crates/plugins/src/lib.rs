@@ -1,5 +1,17 @@
 //! Plugin loading, permissions, lifecycle, and the plugin API.
 
+mod archive;
+mod database;
+mod exec;
+mod git;
+mod mongo;
+
+pub use archive::{create_zip_archive, extract_zip_archive};
+pub use database::{list_sqlite_tables, query_sqlite_table, TableData};
+pub use exec::{run_command, CommandOutput};
+pub use git::{git_log, git_status, GitCommit, GitFileStatus};
+pub use mongo::{list_mongo_collections, list_mongo_databases, query_mongo_collection};
+
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -18,6 +30,12 @@ pub struct PluginManifest {
     /// after parsing so the frontend can resolve `entry` without knowing the plugins root.
     #[serde(default)]
     pub dir: String,
+    /// Whether an `icon.png` file exists in the plugin's directory. Not part of manifest.json
+    /// itself — icons follow a fixed-filename convention rather than being declared, so this is
+    /// just an existence check filled in alongside `dir`. The frontend resolves the actual path
+    /// as `{dir}/icon.png` via the asset protocol when this is true.
+    #[serde(default)]
+    pub has_icon: bool,
 }
 
 fn default_plugins_dir() -> PathBuf {
@@ -68,6 +86,7 @@ pub fn list_plugins(dir: Option<&Path>) -> Vec<PluginManifest> {
             continue;
         }
         manifest.dir = plugin_dir.to_string_lossy().to_string();
+        manifest.has_icon = plugin_dir.join("icon.png").is_file();
         manifests.push(manifest);
     }
     manifests
@@ -179,6 +198,43 @@ mod tests {
 
         assert_eq!(plugins.len(), 1);
         assert!(plugins[0].permissions.is_empty());
+    }
+
+    #[test]
+    fn list_plugins_detects_an_icon_png_when_present() {
+        let dir = tempdir().unwrap();
+        write_plugin(
+            dir.path(),
+            "with-icon",
+            r#"{"id":"with-icon","name":"With Icon","version":"1.0.0","author":"Me","entry":"index.js"}"#,
+            Some("index.js"),
+        );
+        fs::write(
+            dir.path().join("with-icon").join("icon.png"),
+            b"not a real png",
+        )
+        .unwrap();
+
+        let plugins = list_plugins(Some(dir.path()));
+
+        assert_eq!(plugins.len(), 1);
+        assert!(plugins[0].has_icon);
+    }
+
+    #[test]
+    fn list_plugins_has_icon_false_when_icon_png_missing() {
+        let dir = tempdir().unwrap();
+        write_plugin(
+            dir.path(),
+            "no-icon",
+            r#"{"id":"no-icon","name":"No Icon","version":"1.0.0","author":"Me","entry":"index.js"}"#,
+            Some("index.js"),
+        );
+
+        let plugins = list_plugins(Some(dir.path()));
+
+        assert_eq!(plugins.len(), 1);
+        assert!(!plugins[0].has_icon);
     }
 
     #[test]
