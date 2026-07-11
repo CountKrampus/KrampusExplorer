@@ -1,4 +1,5 @@
 use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo};
+use explorer_plugins::PluginManifest;
 use explorer_preview::TextPreview;
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
 use explorer_settings::Settings;
@@ -110,4 +111,14 @@ pub fn get_settings() -> Settings {
 #[tauri::command]
 pub fn save_settings(settings: Settings) -> Result<(), String> {
     explorer_settings::save_settings(&settings, None)
+}
+
+#[tauri::command]
+pub fn list_plugins() -> Vec<PluginManifest> {
+    explorer_plugins::list_plugins(None)
+}
+
+#[tauri::command]
+pub fn read_plugin_entry(path: String) -> Result<String, String> {
+    explorer_plugins::read_entry(&path)
 }
