@@ -1,5 +1,10 @@
 use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo};
+use explorer_preview::TextPreview;
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
+
+/// Never reads more of a file than this for a text/markdown preview, regardless of the
+/// file's real size on disk.
+const MAX_TEXT_PREVIEW_BYTES: usize = 256 * 1024;
 
 #[tauri::command]
 pub fn get_drives() -> Vec<DriveInfo> {
@@ -89,4 +94,9 @@ pub fn list_saved_searches() -> Result<Vec<SavedSearch>, String> {
 #[tauri::command]
 pub fn delete_saved_search(name: String) -> Result<(), String> {
     explorer_search::delete_saved(&name, None)
+}
+
+#[tauri::command]
+pub fn read_text_preview(path: String) -> Result<TextPreview, String> {
+    explorer_preview::read_text_preview(&path, MAX_TEXT_PREVIEW_BYTES)
 }
