@@ -52,15 +52,44 @@ pub fn create_file(parent_path: &str, name: &str) -> Result<String, String> {
 /// rather than showing this as a plain error message.
 pub const CONFLICT_ERROR: &str = "EEXIST";
 
-fn copy_recursive(from: &Path, to: &Path) -> std::io::Result<()> {
+fn count_entries(path: &Path) -> u64 {
+    if path.is_dir() {
+        std::fs::read_dir(path)
+            .map(|read_dir| {
+                read_dir
+                    .flatten()
+                    .map(|entry| count_entries(&entry.path()))
+                    .sum()
+            })
+            .unwrap_or(0)
+    } else {
+        1
+    }
+}
+
+fn copy_recursive(
+    from: &Path,
+    to: &Path,
+    copied: &mut u64,
+    total: u64,
+    on_progress: &mut dyn FnMut(u64, u64),
+) -> std::io::Result<()> {
     if from.is_dir() {
         std::fs::create_dir_all(to)?;
         for entry in std::fs::read_dir(from)? {
             let entry = entry?;
-            copy_recursive(&entry.path(), &to.join(entry.file_name()))?;
+            copy_recursive(
+                &entry.path(),
+                &to.join(entry.file_name()),
+                copied,
+                total,
+                on_progress,
+            )?;
         }
     } else {
         std::fs::copy(from, to)?;
+        *copied += 1;
+        on_progress(*copied, total);
     }
     Ok(())
 }
@@ -101,6 +130,20 @@ pub fn copy_entry(
     dest_name: Option<&str>,
     overwrite: bool,
 ) -> Result<String, String> {
+    copy_entry_reporting(source, dest_dir, dest_name, overwrite, |_, _| {})
+}
+
+/// Same as [`copy_entry`], but calls `on_progress(files_copied, files_total)` after each file
+/// (directories don't count toward the total). `files_total` is computed with an up-front
+/// directory walk, so it's exact even for large trees — at the cost of walking the source
+/// twice (once to count, once to copy).
+pub fn copy_entry_reporting(
+    source: &str,
+    dest_dir: &str,
+    dest_name: Option<&str>,
+    overwrite: bool,
+    mut on_progress: impl FnMut(u64, u64),
+) -> Result<String, String> {
     let source_path = Path::new(source);
     let dest_path = resolve_destination(source_path, dest_dir, dest_name)?;
 
@@ -115,8 +158,16 @@ pub fn copy_entry(
         remove_path(&dest_path).map_err(|e| format!("Could not replace existing item: {e}"))?;
     }
 
-    copy_recursive(source_path, &dest_path)
-        .map_err(|e| format!("Could not copy '{source}': {e}"))?;
+    let total = count_entries(source_path).max(1);
+    let mut copied = 0u64;
+    copy_recursive(
+        source_path,
+        &dest_path,
+        &mut copied,
+        total,
+        &mut on_progress,
+    )
+    .map_err(|e| format!("Could not copy '{source}': {e}"))?;
     Ok(dest_path.to_string_lossy().to_string())
 }
 
@@ -130,10 +181,25 @@ pub fn move_entry(
     dest_name: Option<&str>,
     overwrite: bool,
 ) -> Result<String, String> {
+    move_entry_reporting(source, dest_dir, dest_name, overwrite, |_, _| {})
+}
+
+/// Same as [`move_entry`], but calls `on_progress(files_moved, files_total)`. The fast
+/// same-filesystem rename path is atomic (nothing incremental to report), so it just reports
+/// `(total, total)` once immediately; only the copy-then-delete fallback reports incrementally.
+pub fn move_entry_reporting(
+    source: &str,
+    dest_dir: &str,
+    dest_name: Option<&str>,
+    overwrite: bool,
+    mut on_progress: impl FnMut(u64, u64),
+) -> Result<String, String> {
     let source_path = Path::new(source);
     let dest_path = resolve_destination(source_path, dest_dir, dest_name)?;
 
     if dest_path == source_path {
+        let total = count_entries(source_path).max(1);
+        on_progress(total, total);
         return Ok(dest_path.to_string_lossy().to_string());
     }
 
@@ -149,10 +215,21 @@ pub fn move_entry(
     }
 
     if std::fs::rename(source_path, &dest_path).is_err() {
-        copy_recursive(source_path, &dest_path)
-            .map_err(|e| format!("Could not move '{source}': {e}"))?;
+        let total = count_entries(source_path).max(1);
+        let mut copied = 0u64;
+        copy_recursive(
+            source_path,
+            &dest_path,
+            &mut copied,
+            total,
+            &mut on_progress,
+        )
+        .map_err(|e| format!("Could not move '{source}': {e}"))?;
         remove_path(source_path)
             .map_err(|e| format!("Copied but could not remove original '{source}': {e}"))?;
+    } else {
+        let total = count_entries(&dest_path).max(1);
+        on_progress(total, total);
     }
     Ok(dest_path.to_string_lossy().to_string())
 }
@@ -417,5 +494,71 @@ mod tests {
 
         assert_eq!(result, Err(CONFLICT_ERROR.to_string()));
         assert!(source.exists(), "source should be untouched on conflict");
+    }
+
+    #[test]
+    fn copy_entry_reporting_reports_progress_for_each_file() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("src_dir");
+        fs::create_dir(&source).unwrap();
+        fs::write(source.join("a.txt"), b"a").unwrap();
+        fs::write(source.join("b.txt"), b"b").unwrap();
+        let dest_dir = dir.path().join("dest");
+        fs::create_dir(&dest_dir).unwrap();
+
+        let mut updates = Vec::new();
+        copy_entry_reporting(
+            source.to_str().unwrap(),
+            dest_dir.to_str().unwrap(),
+            None,
+            false,
+            |copied, total| updates.push((copied, total)),
+        )
+        .unwrap();
+
+        assert_eq!(updates, vec![(1, 2), (2, 2)]);
+    }
+
+    #[test]
+    fn copy_entry_reporting_never_calls_on_progress_when_conflict() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("a.txt");
+        fs::write(&source, b"hello").unwrap();
+        let dest_dir = dir.path().join("dest");
+        fs::create_dir(&dest_dir).unwrap();
+        fs::write(dest_dir.join("a.txt"), b"existing").unwrap();
+
+        let mut calls = 0;
+        let result = copy_entry_reporting(
+            source.to_str().unwrap(),
+            dest_dir.to_str().unwrap(),
+            None,
+            false,
+            |_, _| calls += 1,
+        );
+
+        assert_eq!(result, Err(CONFLICT_ERROR.to_string()));
+        assert_eq!(calls, 0);
+    }
+
+    #[test]
+    fn move_entry_reporting_reports_once_for_a_same_filesystem_rename() {
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("a.txt");
+        fs::write(&source, b"hello").unwrap();
+        let dest_dir = dir.path().join("dest");
+        fs::create_dir(&dest_dir).unwrap();
+
+        let mut updates = Vec::new();
+        move_entry_reporting(
+            source.to_str().unwrap(),
+            dest_dir.to_str().unwrap(),
+            None,
+            false,
+            |copied, total| updates.push((copied, total)),
+        )
+        .unwrap();
+
+        assert_eq!(updates, vec![(1, 1)]);
     }
 }

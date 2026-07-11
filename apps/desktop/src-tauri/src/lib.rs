@@ -13,6 +13,8 @@ pub fn run() {
             commands::create_file,
             commands::copy_entry,
             commands::move_entry,
+            commands::copy_entry_with_progress,
+            commands::move_entry_with_progress,
             commands::search_files,
             commands::get_search_history,
             commands::clear_search_history,

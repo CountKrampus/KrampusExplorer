@@ -3,6 +3,15 @@ use explorer_plugins::PluginManifest;
 use explorer_preview::TextPreview;
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
 use explorer_settings::Settings;
+use serde::Serialize;
+use tauri::ipc::Channel;
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TransferProgress {
+    pub copied: u64,
+    pub total: u64,
+}
 
 /// Never reads more of a file than this for a text/markdown preview, regardless of the
 /// file's real size on disk.
@@ -61,6 +70,44 @@ pub fn move_entry(
     overwrite: bool,
 ) -> Result<String, String> {
     explorer_filesystem::move_entry(&source, &dest_dir, dest_name.as_deref(), overwrite)
+}
+
+#[tauri::command]
+pub fn copy_entry_with_progress(
+    source: String,
+    dest_dir: String,
+    dest_name: Option<String>,
+    overwrite: bool,
+    on_progress: Channel<TransferProgress>,
+) -> Result<String, String> {
+    explorer_filesystem::copy_entry_reporting(
+        &source,
+        &dest_dir,
+        dest_name.as_deref(),
+        overwrite,
+        |copied, total| {
+            let _ = on_progress.send(TransferProgress { copied, total });
+        },
+    )
+}
+
+#[tauri::command]
+pub fn move_entry_with_progress(
+    source: String,
+    dest_dir: String,
+    dest_name: Option<String>,
+    overwrite: bool,
+    on_progress: Channel<TransferProgress>,
+) -> Result<String, String> {
+    explorer_filesystem::move_entry_reporting(
+        &source,
+        &dest_dir,
+        dest_name.as_deref(),
+        overwrite,
+        |copied, total| {
+            let _ = on_progress.send(TransferProgress { copied, total });
+        },
+    )
 }
 
 #[tauri::command]
