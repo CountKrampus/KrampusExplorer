@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import { useSearchStore } from "../stores/useSearchStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
+import { usePluginStore } from "../stores/usePluginStore";
 import { performTransfer } from "../services/fileTransfer";
 import { uniqueName } from "../utils/uniqueName";
 import "./Toolbar.css";
@@ -17,6 +18,7 @@ function Toolbar() {
   const searching = useSearchStore((state) => state.active);
   const setSearchActive = useSearchStore((state) => state.setActive);
   const setSettingsOpen = useSettingsStore((state) => state.setPanelOpen);
+  const pluginToolbarButtons = usePluginStore((state) => state.toolbarButtons);
 
   const canGoBack = !!activeTab && activeTab.historyIndex > 0;
   const canGoForward = !!activeTab && activeTab.historyIndex < activeTab.history.length - 1;
@@ -79,6 +81,17 @@ function Toolbar() {
       <button onClick={() => setSettingsOpen(true)} aria-label="Settings">
         &#x2699;
       </button>
+      {pluginToolbarButtons.length > 0 && <span className="toolbar__separator" aria-hidden="true" />}
+      {pluginToolbarButtons.map((button) => (
+        <button
+          key={`${button.pluginId}:${button.id}`}
+          onClick={button.onClick}
+          aria-label={button.label}
+          title={button.label}
+        >
+          {button.label}
+        </button>
+      ))}
       <span className="toolbar__path">{activeTab?.history[activeTab.historyIndex] ?? ""}</span>
     </div>
   );

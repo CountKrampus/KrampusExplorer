@@ -1,9 +1,15 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { createPluginApi } from "../plugins/pluginApi";
-import type { PluginManifest, PluginSidebarPanel } from "../types/plugin";
+import { useExplorerStore } from "./useExplorerStore";
+import type { PluginManifest, PluginSidebarPanel, PluginToolbarButton } from "../types/plugin";
 
 export interface RegisteredSidebarPanel extends PluginSidebarPanel {
+  pluginId: string;
+}
+
+export interface RegisteredToolbarButton extends PluginToolbarButton {
   pluginId: string;
 }
 
@@ -12,9 +18,38 @@ export interface PluginLoadError {
   message: string;
 }
 
+interface TextPreviewPayload {
+  content: string;
+  truncated: boolean;
+}
+
+function getActiveSelectedPath(): string | null {
+  const state = useExplorerStore.getState();
+  const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+  return activeTab?.selectedPath ?? null;
+}
+
+function getCurrentFolderPath(): string | null {
+  const state = useExplorerStore.getState();
+  const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
+  return activeTab ? activeTab.history[activeTab.historyIndex] : null;
+}
+
+function onSelectionChange(callback: (path: string | null) => void): () => void {
+  let last = getActiveSelectedPath();
+  return useExplorerStore.subscribe(() => {
+    const current = getActiveSelectedPath();
+    if (current !== last) {
+      last = current;
+      callback(current);
+    }
+  });
+}
+
 interface PluginState {
   manifests: PluginManifest[];
   panels: RegisteredSidebarPanel[];
+  toolbarButtons: RegisteredToolbarButton[];
   errors: PluginLoadError[];
   loaded: boolean;
   loadPlugins: () => Promise<void>;
@@ -23,6 +58,7 @@ interface PluginState {
 export const usePluginStore = create<PluginState>((set) => ({
   manifests: [],
   panels: [],
+  toolbarButtons: [],
   errors: [],
   loaded: false,
 
@@ -46,6 +82,16 @@ export const usePluginStore = create<PluginState>((set) => ({
           registerSidebarPanel: (pluginId, panel) => {
             set((state) => ({ panels: [...state.panels, { ...panel, pluginId }] }));
           },
+          registerToolbarButton: (pluginId, button) => {
+            set((state) => ({ toolbarButtons: [...state.toolbarButtons, { ...button, pluginId }] }));
+          },
+          readTextFile: async (path) => {
+            const preview = await invoke<TextPreviewPayload>("read_text_preview", { path });
+            return preview.content;
+          },
+          getCurrentPath: getCurrentFolderPath,
+          onSelectionChange,
+          copyToClipboard: (text) => writeText(text),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.
