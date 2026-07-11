@@ -42,7 +42,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY1NEM1OTE3QkRDMTIwQjcKUldTM0lNRzlGMWxNOVYzWDFDN25oY2JuUjY4OGc2Z0ErQ3FiZDVVT0ZCa2dQWURlaGZQa3ZEZ0EK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQzMEI4NDkyMzA2RTZFQzAKUldUQWJtNHdrb1FMMHdDOU13YjNuYW4xZG1iSXhmVGhxQit1TTcxMXJISGpLdWFqeEtFcTl1QU0K",
       "endpoints": ["https://github.com/CountKrampus/KrampusExplorer/releases/latest/download/latest.json"]
     }
   }

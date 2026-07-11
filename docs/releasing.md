@@ -27,27 +27,32 @@ files, and `latest.json` (the file the in-app updater polls) to the release.
 
 **Signing key** — generated with:
 
-```powershell
-npx tauri signer generate -f -p "<password>" -w "$env:USERPROFILE\.tauri\<name>.key"
+```sh
+npx tauri signer generate -f --ci -w "$HOME/.tauri/<name>.key"
 ```
 
-Run this on your own machine, not through an agent/CI shell — the password must never be passed
-as a bare CLI argument or committed anywhere. The command prints a public key
-(`dW50cnVzdGVk...`); put that string in `apps/desktop/src-tauri/tauri.conf.json` under
-`plugins.updater.pubkey`. The private key file itself stays local and is never committed.
+The key is intentionally passwordless (`--ci` skips the password prompt) — GitHub Actions
+secrets can't be set to an empty value, so a password-protected key would mean two secrets that
+have to stay in sync (the key contents and its password), which is a needless source of
+mismatch failures for a solo/small project. If you want the extra protection, pass `-p
+"<password>"` instead of `--ci` and add a matching `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secret —
+but run that on your own machine, never through an agent/CI shell, since the password must never
+be passed as a bare CLI argument or committed anywhere.
 
-**Repository secrets** (Settings → Secrets and variables → Actions):
+The command prints a public key (`dW50cnVzdGVk...`); put that string in
+`apps/desktop/src-tauri/tauri.conf.json` under `plugins.updater.pubkey`. The private key file
+itself stays local and is never committed.
+
+**Repository secret** (Settings → Secrets and variables → Actions):
 
 | Secret | Value |
 |---|---|
 | `TAURI_SIGNING_PRIVATE_KEY` | Full contents of the `.key` file generated above |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | The password used with `-p` when generating the key |
 
-If you ever regenerate the key (e.g. to add or change the password), you must update **both**
-the `pubkey` in `tauri.conf.json` and the `TAURI_SIGNING_PRIVATE_KEY` secret — they have to match
-the same keypair, and the password secret has to match what the key was actually encrypted with.
-A mismatch here is the most common cause of the release workflow failing at the sign/publish
-step.
+If you ever regenerate the key, update **both** the `pubkey` in `tauri.conf.json` and this
+secret — they have to match the same keypair. A stale/empty secret here is the most common cause
+of the release workflow failing at the sign/publish step with "A public key has been found, but
+no private key."
 
 **Repo visibility** — the updater's `endpoints` in `tauri.conf.json` point at
 `.../releases/latest/download/latest.json` on GitHub. For unauthenticated downloads to work
