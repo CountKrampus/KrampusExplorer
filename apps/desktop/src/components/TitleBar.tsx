@@ -9,7 +9,7 @@ const appWindow = getCurrentWindow();
 function TitleBar() {
   return (
     <div className="title-bar" data-tauri-drag-region>
-      <span className="title-bar__title">Project Explorer</span>
+      <span className="title-bar__title">Krampus Explorer</span>
       <div className="title-bar__controls">
         <button
           className="title-bar__button"

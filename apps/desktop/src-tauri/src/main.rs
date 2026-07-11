@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    project_explorer_lib::run();
+    krampus_explorer_lib::run();
 }

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Project Explorer",
+  "productName": "Krampus Explorer",
   "version": "0.1.0",
-  "identifier": "com.projectexplorer.app",
+  "identifier": "com.krampusexplorer.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Project Explorer",
+        "title": "Krampus Explorer",
         "width": 1200,
         "height": 800,
         "minWidth": 800,

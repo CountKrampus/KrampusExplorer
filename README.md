@@ -1,4 +1,4 @@
-# Project Explorer
+# Krampus Explorer
 
 A modern, lightweight, fast, extensible file explorer built with a plugin-first architecture. The core application handles only filesystem interaction, window management, search, settings, and plugin loading — everything else is a plugin.
 

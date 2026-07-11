@@ -12,7 +12,7 @@ interface ThemeState extends StoredTheme {
   setAccentColor: (color: string) => void;
 }
 
-const STORAGE_KEY = "project-explorer:theme";
+const STORAGE_KEY = "krampus-explorer:theme";
 const DEFAULTS: StoredTheme = { theme: "system", accentColor: "#2b6cb0" };
 
 function loadStoredTheme(): StoredTheme {

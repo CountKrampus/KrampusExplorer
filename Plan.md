@@ -1,4 +1,4 @@
-# Project Explorer
+# Krampus Explorer
 
 ## Master Development Plan
 
@@ -13,7 +13,7 @@
 
 # Vision
 
-Project Explorer aims to be a modern, lightweight, fast, extensible file explorer.
+Krampus Explorer aims to be a modern, lightweight, fast, extensible file explorer.
 
 The application is intentionally designed around a **plugin-first architecture**. The core application is responsible only for filesystem interaction, window management, search, settings, and plugin loading.
 
@@ -253,7 +253,7 @@ Plugins should never modify core functionality directly.
 # Project Structure
 
 ```
-project-explorer/
+krampus-explorer/
 
 apps/
     desktop/
@@ -556,4 +556,4 @@ Version 1.0
 
 # Long-Term Vision
 
-Project Explorer should become a modular desktop platform centered around fast, reliable file management. Users should be able to install only the capabilities they need, keeping the core application lightweight while enabling an ecosystem of optional extensions ranging from media tools and cloud storage to custom workflows and domain-specific plugins.
+Krampus Explorer should become a modular desktop platform centered around fast, reliable file management. Users should be able to install only the capabilities they need, keeping the core application lightweight while enabling an ecosystem of optional extensions ranging from media tools and cloud storage to custom workflows and domain-specific plugins.

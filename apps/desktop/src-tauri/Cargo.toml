@@ -1,11 +1,11 @@
 [package]
-name = "project-explorer"
+name = "krampus-explorer"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [lib]
-name = "project_explorer_lib"
+name = "krampus_explorer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
