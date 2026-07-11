@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
-import { useSettingsStore } from "../stores/useSettingsStore";
+import { useSettingsStore, type SortDirection, type SortField } from "../stores/useSettingsStore";
 import { usePluginStore } from "../stores/usePluginStore";
 import { useToastStore } from "../stores/useToastStore";
 import { performTransfer } from "../services/fileTransfer";
 import ConfirmDialog from "../components/ConfirmDialog";
+import type { EntryInfo } from "../types/filesystem";
 import "./FileList.css";
 
 export function formatSize(size: number | null): string {
@@ -23,8 +24,41 @@ export function formatModified(modified: string | null): string {
   return new Date(seconds * 1000).toLocaleString();
 }
 
+function extensionOf(name: string): string {
+  const dotIndex = name.lastIndexOf(".");
+  return dotIndex <= 0 ? "" : name.slice(dotIndex + 1).toLowerCase();
+}
+
+/** Folders always sort before files regardless of `field` — sorting folders by "size" or
+ * "type" is meaningless since folders don't carry a size or extension in this app. */
+export function sortEntries(entries: EntryInfo[], field: SortField, direction: SortDirection): EntryInfo[] {
+  const sign = direction === "asc" ? 1 : -1;
+  return [...entries].sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    if (field === "name") {
+      return sign * a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    }
+    if (field === "size") {
+      return sign * ((a.size ?? 0) - (b.size ?? 0));
+    }
+    if (field === "type") {
+      return sign * extensionOf(a.name).localeCompare(extensionOf(b.name));
+    }
+    if (field === "created") {
+      const aTime = a.created ? Number(a.created) : 0;
+      const bTime = b.created ? Number(b.created) : 0;
+      return sign * (aTime - bTime);
+    }
+    // modified
+    const aTime = a.modified ? Number(a.modified) : 0;
+    const bTime = b.modified ? Number(b.modified) : 0;
+    return sign * (aTime - bTime);
+  });
+}
+
 interface ContextMenuState {
   path: string;
+  isDir: boolean;
   x: number;
   y: number;
 }
@@ -37,6 +71,12 @@ function FileList() {
   const clipboard = useExplorerStore((state) => state.clipboard);
   const setClipboard = useExplorerStore((state) => state.setClipboard);
   const iconSize = useSettingsStore((state) => state.iconSize);
+  const favoritePaths = useSettingsStore((state) => state.favoritePaths);
+  const addFavorite = useSettingsStore((state) => state.addFavorite);
+  const removeFavorite = useSettingsStore((state) => state.removeFavorite);
+  const sortField = useSettingsStore((state) => state.sortField);
+  const sortDirection = useSettingsStore((state) => state.sortDirection);
+  const setSort = useSettingsStore((state) => state.setSort);
   const contextMenuItems = usePluginStore((state) => state.contextMenuItems);
   const showToast = useToastStore((state) => state.showToast);
 
@@ -104,6 +144,7 @@ function FileList() {
 
   if (!activeTab) return null;
   const tab = activeTab;
+  const sortedEntries = sortEntries(tab.entries, sortField, sortDirection);
 
   function beginRename(path: string) {
     const entry = tab.entries.find((e) => e.path === path);
@@ -153,7 +194,7 @@ function FileList() {
   }
 
   function handleRowKeyDown(event: React.KeyboardEvent, index: number) {
-    const entries = tab.entries;
+    const entries = sortedEntries;
     if (event.key === "ArrowDown" && index < entries.length - 1) {
       event.preventDefault();
       const next = entries[index + 1];
@@ -201,16 +242,54 @@ function FileList() {
 
   return (
     <>
+      <div className="file-list__toolbar">
+        <label className="file-list__sort-dropdown">
+          Sort by:{" "}
+          <select value={sortField} onChange={(event) => setSort(event.target.value as SortField)}>
+            <option value="name">Name</option>
+            <option value="size">Size</option>
+            <option value="type">Type</option>
+            <option value="modified">Date Modified</option>
+            <option value="created">Date Created</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          className="file-list__sort-direction"
+          onClick={() => setSort(sortField)}
+          aria-label={sortDirection === "asc" ? "Sort ascending" : "Sort descending"}
+          title={sortDirection === "asc" ? "Ascending" : "Descending"}
+        >
+          {sortDirection === "asc" ? "▴" : "▾"}
+        </button>
+      </div>
       <table className={`file-list file-list--icon-${iconSize}`}>
         <thead>
           <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Size</th>
-            <th scope="col">Modified</th>
+            <th scope="col">
+              <button className="file-list__sort-button" onClick={() => setSort("name")}>
+                Name{sortField === "name" ? (sortDirection === "asc" ? " ▴" : " ▾") : ""}
+              </button>
+            </th>
+            <th scope="col">
+              <button className="file-list__sort-button" onClick={() => setSort("size")}>
+                Size{sortField === "size" ? (sortDirection === "asc" ? " ▴" : " ▾") : ""}
+              </button>
+            </th>
+            <th scope="col">
+              <button className="file-list__sort-button" onClick={() => setSort("type")}>
+                Type{sortField === "type" ? (sortDirection === "asc" ? " ▴" : " ▾") : ""}
+              </button>
+            </th>
+            <th scope="col">
+              <button className="file-list__sort-button" onClick={() => setSort("modified")}>
+                Modified{sortField === "modified" ? (sortDirection === "asc" ? " ▴" : " ▾") : ""}
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
-          {activeTab.entries.map((entry, index) => (
+          {sortedEntries.map((entry, index) => (
             <tr
               key={entry.path}
               ref={(el) => {
@@ -232,7 +311,7 @@ function FileList() {
               onContextMenu={(event) => {
                 event.preventDefault();
                 setSelected(entry.path);
-                setMenu({ path: entry.path, x: event.clientX, y: event.clientY });
+                setMenu({ path: entry.path, isDir: entry.isDir, x: event.clientX, y: event.clientY });
               }}
               onDragStart={(event) => {
                 draggingPathRef.current = entry.path;
@@ -282,6 +361,7 @@ function FileList() {
                 )}
               </td>
               <td>{formatSize(entry.size)}</td>
+              <td>{entry.isDir ? "File folder" : extensionOf(entry.name)}</td>
               <td>{formatModified(entry.modified)}</td>
             </tr>
           ))}
@@ -319,6 +399,26 @@ function FileList() {
           >
             Delete
           </button>
+          <div className="file-list__context-menu-separator" />
+          {favoritePaths.includes(menu.path) ? (
+            <button
+              onClick={() => {
+                removeFavorite(menu.path);
+                setMenu(null);
+              }}
+            >
+              Remove from Favorites
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                addFavorite(menu.path);
+                setMenu(null);
+              }}
+            >
+              Add to Favorites
+            </button>
+          )}
           {contextMenuItems.length > 0 && (
             <>
               <div className="file-list__context-menu-separator" />
@@ -327,8 +427,9 @@ function FileList() {
                   key={`${item.pluginId}:${item.id}`}
                   onClick={() => {
                     const path = menu.path;
+                    const isDir = menu.isDir;
                     setMenu(null);
-                    item.onClick(path);
+                    item.onClick(path, isDir);
                   }}
                 >
                   {item.label}

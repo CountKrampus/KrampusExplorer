@@ -33,8 +33,9 @@ export interface PluginContextMenuItem {
   id: string;
   /** Shown as the menu entry's label. */
   label: string;
-  /** Called with the right-clicked file/folder's path when the entry is clicked. */
-  onClick: (path: string) => void;
+  /** Called with the right-clicked file/folder's path, and whether it's a folder, when the
+   * entry is clicked. */
+  onClick: (path: string, isDir: boolean) => void;
 }
 
 export interface PluginFileHandler {
