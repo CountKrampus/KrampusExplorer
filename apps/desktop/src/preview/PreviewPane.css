@@ -1,0 +1,16 @@
+.preview-pane {
+  width: 240px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-pane__empty {
+  color: var(--fg-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 12px;
+}
