@@ -10,6 +10,7 @@ export interface Tab {
   entries: EntryInfo[];
   loading: boolean;
   error: string | null;
+  selectedPath: string | null;
 }
 
 type TabResult = { entries: EntryInfo[]; parent: string | null } | { error: string };
@@ -26,6 +27,7 @@ interface ExplorerState {
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   setTabResult: (id: string, result: TabResult) => void;
+  setSelected: (path: string | null) => void;
 }
 
 let nextTabId = 1;
@@ -39,6 +41,7 @@ function createTab(path: string): Tab {
     entries: [],
     loading: true,
     error: null,
+    selectedPath: null,
   };
 }
 
@@ -52,7 +55,14 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         if (tab.id !== state.activeTabId) return tab;
         const history = tab.history.slice(0, tab.historyIndex + 1);
         history.push(path);
-        return { ...tab, history, historyIndex: history.length - 1, loading: true, error: null };
+        return {
+          ...tab,
+          history,
+          historyIndex: history.length - 1,
+          loading: true,
+          error: null,
+          selectedPath: null,
+        };
       }),
     })),
 
@@ -60,7 +70,13 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     set((state) => ({
       tabs: state.tabs.map((tab) => {
         if (tab.id !== state.activeTabId || tab.historyIndex <= 0) return tab;
-        return { ...tab, historyIndex: tab.historyIndex - 1, loading: true, error: null };
+        return {
+          ...tab,
+          historyIndex: tab.historyIndex - 1,
+          loading: true,
+          error: null,
+          selectedPath: null,
+        };
       }),
     })),
 
@@ -68,7 +84,13 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
     set((state) => ({
       tabs: state.tabs.map((tab) => {
         if (tab.id !== state.activeTabId || tab.historyIndex >= tab.history.length - 1) return tab;
-        return { ...tab, historyIndex: tab.historyIndex + 1, loading: true, error: null };
+        return {
+          ...tab,
+          historyIndex: tab.historyIndex + 1,
+          loading: true,
+          error: null,
+          selectedPath: null,
+        };
       }),
     })),
 
@@ -115,6 +137,13 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         }
         return { ...tab, loading: false, error: null, entries: result.entries, parent: result.parent };
       }),
+    })),
+
+  setSelected: (path) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.id === state.activeTabId ? { ...tab, selectedPath: path } : tab,
+      ),
     })),
 }));
 

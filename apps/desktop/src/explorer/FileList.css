@@ -23,6 +23,48 @@
   background: var(--bg-secondary);
 }
 
+.file-list__row--selected {
+  background: var(--accent);
+  color: white;
+}
+
+.file-list__rename-input {
+  font-size: 13px;
+  padding: 1px 4px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.file-list__context-menu {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}
+
+.file-list__context-menu button {
+  text-align: left;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 2px;
+}
+
+.file-list__context-menu button:hover {
+  background: var(--bg-secondary);
+}
+
 .file-list-message {
   padding: 20px;
   color: var(--fg-muted);
