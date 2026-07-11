@@ -88,6 +88,12 @@
   background: var(--bg-secondary);
 }
 
+.file-list__context-menu-separator {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}
+
 .file-list-message {
   padding: 20px;
   color: var(--fg-muted);

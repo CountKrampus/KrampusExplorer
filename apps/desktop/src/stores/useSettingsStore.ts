@@ -12,6 +12,7 @@ interface BackendSettings {
   startupCustomPath: string | null;
   iconSize: string;
   lastLocation: string | null;
+  disabledPlugins: string[];
 }
 
 const DEFAULTS: BackendSettings = {
@@ -21,6 +22,7 @@ const DEFAULTS: BackendSettings = {
   startupCustomPath: null,
   iconSize: "medium",
   lastLocation: null,
+  disabledPlugins: [],
 };
 
 function asTheme(value: string): Theme {
@@ -43,6 +45,7 @@ interface SettingsState {
   startupCustomPath: string | null;
   iconSize: IconSize;
   lastLocation: string | null;
+  disabledPlugins: string[];
   panelOpen: boolean;
   loadSettings: () => Promise<void>;
   setTheme: (theme: Theme) => void;
@@ -51,6 +54,7 @@ interface SettingsState {
   setStartupCustomPath: (path: string | null) => void;
   setIconSize: (size: IconSize) => void;
   setLastLocation: (path: string) => void;
+  setPluginEnabled: (pluginId: string, enabled: boolean) => void;
   setPanelOpen: (open: boolean) => void;
 }
 
@@ -65,6 +69,7 @@ function persist(state: SettingsState) {
     startupCustomPath: state.startupCustomPath,
     iconSize: state.iconSize,
     lastLocation: state.lastLocation,
+    disabledPlugins: state.disabledPlugins,
   };
   invoke("save_settings", { settings: payload }).catch((error: string) => {
     console.error("Could not save settings:", error);
@@ -79,6 +84,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   startupCustomPath: DEFAULTS.startupCustomPath,
   iconSize: asIconSize(DEFAULTS.iconSize),
   lastLocation: DEFAULTS.lastLocation,
+  disabledPlugins: DEFAULTS.disabledPlugins,
   panelOpen: false,
 
   loadSettings: async () => {
@@ -91,6 +97,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         startupCustomPath: settings.startupCustomPath,
         iconSize: asIconSize(settings.iconSize),
         lastLocation: settings.lastLocation,
+        disabledPlugins: settings.disabledPlugins,
         loaded: true,
       });
     } catch {
@@ -128,6 +135,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLastLocation: (lastLocation) => {
     if (get().lastLocation === lastLocation) return;
     set({ lastLocation });
+    persist(get());
+  },
+
+  setPluginEnabled: (pluginId, enabled) => {
+    const current = get().disabledPlugins;
+    const disabledPlugins = enabled
+      ? current.filter((id) => id !== pluginId)
+      : current.includes(pluginId)
+        ? current
+        : [...current, pluginId];
+    set({ disabledPlugins });
     persist(get());
   },
 

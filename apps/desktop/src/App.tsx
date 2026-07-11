@@ -48,8 +48,12 @@ function App() {
   const loadPlugins = usePluginStore((state) => state.loadPlugins);
 
   useEffect(() => {
+    // Waits for settings to load first so `disabledPlugins` is known before any plugin entry
+    // script runs — otherwise a disabled plugin could still execute during the race window
+    // before settings finish loading.
+    if (!settingsLoaded) return;
     void loadPlugins();
-  }, [loadPlugins]);
+  }, [settingsLoaded, loadPlugins]);
 
   useEffect(() => {
     if (tabs.length !== 0 || !settingsLoaded) return;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
+import { usePluginStore } from "../stores/usePluginStore";
 import { performTransfer } from "../services/fileTransfer";
 import "./FileList.css";
 
@@ -34,6 +35,7 @@ function FileList() {
   const clipboard = useExplorerStore((state) => state.clipboard);
   const setClipboard = useExplorerStore((state) => state.setClipboard);
   const iconSize = useSettingsStore((state) => state.iconSize);
+  const contextMenuItems = usePluginStore((state) => state.contextMenuItems);
 
   const [menu, setMenu] = useState<ContextMenuState | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -259,6 +261,23 @@ function FileList() {
           >
             Delete
           </button>
+          {contextMenuItems.length > 0 && (
+            <>
+              <div className="file-list__context-menu-separator" />
+              {contextMenuItems.map((item) => (
+                <button
+                  key={`${item.pluginId}:${item.id}`}
+                  onClick={() => {
+                    const path = menu.path;
+                    setMenu(null);
+                    item.onClick(path);
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       )}
     </>

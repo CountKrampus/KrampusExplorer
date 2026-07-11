@@ -3,13 +3,32 @@ import { invoke } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { createPluginApi } from "../plugins/pluginApi";
 import { useExplorerStore } from "./useExplorerStore";
-import type { PluginManifest, PluginSidebarPanel, PluginToolbarButton } from "../types/plugin";
+import { useSettingsStore } from "./useSettingsStore";
+import type {
+  CommandOutput,
+  GitCommit,
+  GitFileStatus,
+  PluginContextMenuItem,
+  PluginFileHandler,
+  PluginManifest,
+  PluginSidebarPanel,
+  PluginToolbarButton,
+  SqliteTable,
+} from "../types/plugin";
 
 export interface RegisteredSidebarPanel extends PluginSidebarPanel {
   pluginId: string;
 }
 
 export interface RegisteredToolbarButton extends PluginToolbarButton {
+  pluginId: string;
+}
+
+export interface RegisteredContextMenuItem extends PluginContextMenuItem {
+  pluginId: string;
+}
+
+export interface RegisteredFileHandler extends PluginFileHandler {
   pluginId: string;
 }
 
@@ -46,10 +65,23 @@ function onSelectionChange(callback: (path: string | null) => void): () => void 
   });
 }
 
+function onFolderChange(callback: (path: string) => void): () => void {
+  let last = getCurrentFolderPath();
+  return useExplorerStore.subscribe(() => {
+    const current = getCurrentFolderPath();
+    if (current !== null && current !== last) {
+      last = current;
+      callback(current);
+    }
+  });
+}
+
 interface PluginState {
   manifests: PluginManifest[];
   panels: RegisteredSidebarPanel[];
   toolbarButtons: RegisteredToolbarButton[];
+  contextMenuItems: RegisteredContextMenuItem[];
+  fileHandlers: RegisteredFileHandler[];
   errors: PluginLoadError[];
   loaded: boolean;
   loadPlugins: () => Promise<void>;
@@ -59,10 +91,17 @@ export const usePluginStore = create<PluginState>((set) => ({
   manifests: [],
   panels: [],
   toolbarButtons: [],
+  contextMenuItems: [],
+  fileHandlers: [],
   errors: [],
   loaded: false,
 
   loadPlugins: async () => {
+    // Reset registration state before re-scanning: plugin entry scripts register their UI as a
+    // side effect (not idempotent), so re-running them — e.g. after toggling a plugin on/off —
+    // must start from a clean slate rather than appending to whatever was registered before.
+    set({ panels: [], toolbarButtons: [], contextMenuItems: [], fileHandlers: [] });
+
     let manifests: PluginManifest[] = [];
     try {
       manifests = await invoke<PluginManifest[]>("list_plugins");
@@ -72,8 +111,11 @@ export const usePluginStore = create<PluginState>((set) => ({
     }
 
     const errors: PluginLoadError[] = [];
+    const disabledPlugins = useSettingsStore.getState().disabledPlugins;
 
     for (const manifest of manifests) {
+      if (disabledPlugins.includes(manifest.id)) continue;
+
       try {
         const code = await invoke<string>("read_plugin_entry", {
           path: `${manifest.dir}/${manifest.entry}`,
@@ -85,13 +127,36 @@ export const usePluginStore = create<PluginState>((set) => ({
           registerToolbarButton: (pluginId, button) => {
             set((state) => ({ toolbarButtons: [...state.toolbarButtons, { ...button, pluginId }] }));
           },
+          registerContextMenuItem: (pluginId, item) => {
+            set((state) => ({ contextMenuItems: [...state.contextMenuItems, { ...item, pluginId }] }));
+          },
+          registerFileHandler: (pluginId, handler) => {
+            set((state) => ({ fileHandlers: [...state.fileHandlers, { ...handler, pluginId }] }));
+          },
           readTextFile: async (path) => {
             const preview = await invoke<TextPreviewPayload>("read_text_preview", { path });
             return preview.content;
           },
           getCurrentPath: getCurrentFolderPath,
+          getSelectedPath: getActiveSelectedPath,
           onSelectionChange,
+          onFolderChange,
           copyToClipboard: (text) => writeText(text),
+          createZipArchive: (sourcePaths, destZipPath) =>
+            invoke<string>("create_zip_archive", { sourcePaths, destZipPath }),
+          extractZipArchive: (zipPath, destDir) =>
+            invoke<string>("extract_zip_archive", { zipPath, destDir }),
+          listSqliteTables: (dbPath) => invoke<string[]>("list_sqlite_tables", { dbPath }),
+          querySqliteTable: (dbPath, table, limit, offset) =>
+            invoke<SqliteTable>("query_sqlite_table", { dbPath, table, limit, offset }),
+          listMongoDatabases: (uri) => invoke<string[]>("list_mongo_databases", { uri }),
+          listMongoCollections: (uri, dbName) =>
+            invoke<string[]>("list_mongo_collections", { uri, dbName }),
+          queryMongoCollection: (uri, dbName, collection, limit) =>
+            invoke<string[]>("query_mongo_collection", { uri, dbName, collection, limit }),
+          gitStatus: (repoPath) => invoke<GitFileStatus[]>("git_status", { repoPath }),
+          gitLog: (repoPath, limit) => invoke<GitCommit[]>("git_log", { repoPath, limit }),
+          runCommand: (cwd, command) => invoke<CommandOutput>("run_command", { command, cwd }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.

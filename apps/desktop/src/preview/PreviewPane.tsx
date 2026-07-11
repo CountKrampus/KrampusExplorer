@@ -1,12 +1,15 @@
 import { useActiveTab } from "../stores/useExplorerStore";
-import { previewKindFor } from "./previewKind";
+import { usePluginStore } from "../stores/usePluginStore";
+import { previewKindFor, extensionOf } from "./previewKind";
 import MediaPreview from "./MediaPreview";
 import TextPreview from "./TextPreview";
+import PluginFilePreview from "./PluginFilePreview";
 import { formatSize, formatModified } from "../explorer/FileList";
 import "./PreviewPane.css";
 
 function PreviewPane() {
   const activeTab = useActiveTab();
+  const fileHandlers = usePluginStore((state) => state.fileHandlers);
   const entry = activeTab?.entries.find((e) => e.path === activeTab.selectedPath);
 
   if (!entry) {
@@ -28,6 +31,10 @@ function PreviewPane() {
     );
   }
 
+  // Plugin-registered file handlers take priority over the built-in preview for extensions
+  // they claim (first match wins if more than one plugin claims the same extension).
+  const ext = extensionOf(entry.name);
+  const pluginHandler = fileHandlers.find((handler) => handler.extensions.includes(ext));
   const kind = previewKindFor(entry.name);
 
   return (
@@ -38,7 +45,9 @@ function PreviewPane() {
         </p>
       </div>
       <div className="preview-pane__body">
-        {kind === "image" || kind === "audio" || kind === "video" || kind === "pdf" ? (
+        {pluginHandler ? (
+          <PluginFilePreview handler={pluginHandler} path={entry.path} />
+        ) : kind === "image" || kind === "audio" || kind === "video" || kind === "pdf" ? (
           <MediaPreview path={entry.path} kind={kind} />
         ) : kind === "text" || kind === "markdown" ? (
           <TextPreview path={entry.path} markdown={kind === "markdown"} />

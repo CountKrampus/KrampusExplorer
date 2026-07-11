@@ -24,6 +24,10 @@ pub struct Settings {
     /// `Settings::default()` on ANY parse error, not just per-field).
     #[serde(default)]
     pub last_location: Option<String>,
+    /// IDs of plugins the user has turned off. A disabled plugin's manifest is still listed
+    /// (so it can be re-enabled), but its entry script is never executed.
+    #[serde(default)]
+    pub disabled_plugins: Vec<String>,
 }
 
 impl Default for Settings {
@@ -35,6 +39,7 @@ impl Default for Settings {
             startup_custom_path: None,
             icon_size: "medium".to_string(),
             last_location: None,
+            disabled_plugins: Vec::new(),
         }
     }
 }
@@ -98,6 +103,7 @@ mod tests {
             startup_custom_path: Some("C:\\Projects".to_string()),
             icon_size: "large".to_string(),
             last_location: Some("C:\\Users\\boo\\Documents".to_string()),
+            disabled_plugins: vec!["quick-notes".to_string()],
         };
 
         save_settings(&settings, Some(&path)).unwrap();
@@ -122,6 +128,23 @@ mod tests {
         assert_eq!(settings.theme, "dark");
         assert_eq!(settings.startup_mode, "custom");
         assert_eq!(settings.last_location, None);
+    }
+
+    #[test]
+    fn load_settings_fills_in_missing_disabled_plugins_without_resetting_everything_else() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        // Simulates a settings.json written before `disabled_plugins` existed.
+        std::fs::write(
+            &path,
+            r##"{"theme":"dark","accentColor":"#ff0000","startupMode":"custom","startupCustomPath":"C:\\Projects","iconSize":"large"}"##,
+        )
+        .unwrap();
+
+        let settings = load_settings(Some(&path));
+
+        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.disabled_plugins, Vec::<String>::new());
     }
 
     #[test]

@@ -108,9 +108,39 @@
 
 .settings-panel__plugin-list li {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
   padding: 4px 0;
   border-bottom: 1px solid var(--border);
+}
+
+.settings-panel__plugin-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.settings-panel__plugin-icon--placeholder {
+  background: var(--border);
+}
+
+.settings-panel__plugin-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-panel__plugin-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--fg-muted);
+  flex-shrink: 0;
 }
 
 .settings-panel__plugin-name {

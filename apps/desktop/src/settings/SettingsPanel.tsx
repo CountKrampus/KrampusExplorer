@@ -1,3 +1,4 @@
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useSettingsStore, type IconSize, type StartupMode, type Theme } from "../stores/useSettingsStore";
 import { usePluginStore } from "../stores/usePluginStore";
 import "./SettingsPanel.css";
@@ -24,8 +25,11 @@ function SettingsPanel() {
   const setStartupCustomPath = useSettingsStore((state) => state.setStartupCustomPath);
   const iconSize = useSettingsStore((state) => state.iconSize);
   const setIconSize = useSettingsStore((state) => state.setIconSize);
+  const disabledPlugins = useSettingsStore((state) => state.disabledPlugins);
+  const setPluginEnabled = useSettingsStore((state) => state.setPluginEnabled);
   const pluginManifests = usePluginStore((state) => state.manifests);
   const pluginErrors = usePluginStore((state) => state.errors);
+  const loadPlugins = usePluginStore((state) => state.loadPlugins);
 
   if (!open) return null;
 
@@ -117,15 +121,40 @@ function SettingsPanel() {
             </p>
           ) : (
             <ul className="settings-panel__plugin-list">
-              {pluginManifests.map((plugin) => (
-                <li key={plugin.id}>
-                  <span className="settings-panel__plugin-name">{plugin.name}</span>
-                  <span className="settings-panel__plugin-meta">
-                    v{plugin.version} by {plugin.author}
-                    {plugin.permissions.length > 0 && ` — ${plugin.permissions.join(", ")}`}
-                  </span>
-                </li>
-              ))}
+              {pluginManifests.map((plugin) => {
+                const enabled = !disabledPlugins.includes(plugin.id);
+                return (
+                  <li key={plugin.id}>
+                    {plugin.hasIcon ? (
+                      <img
+                        className="settings-panel__plugin-icon"
+                        src={convertFileSrc(`${plugin.dir}/icon.png`)}
+                        alt=""
+                      />
+                    ) : (
+                      <span className="settings-panel__plugin-icon settings-panel__plugin-icon--placeholder" />
+                    )}
+                    <div className="settings-panel__plugin-info">
+                      <span className="settings-panel__plugin-name">{plugin.name}</span>
+                      <span className="settings-panel__plugin-meta">
+                        v{plugin.version} by {plugin.author}
+                        {plugin.permissions.length > 0 && ` — ${plugin.permissions.join(", ")}`}
+                      </span>
+                    </div>
+                    <label className="settings-panel__plugin-toggle">
+                      <input
+                        type="checkbox"
+                        checked={enabled}
+                        onChange={() => {
+                          setPluginEnabled(plugin.id, !enabled);
+                          void loadPlugins();
+                        }}
+                      />
+                      Enabled
+                    </label>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {pluginErrors.length > 0 && (

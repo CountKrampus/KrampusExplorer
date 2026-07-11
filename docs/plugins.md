@@ -13,7 +13,15 @@ Each plugin is a subdirectory containing a `manifest.json` and an entry JS file.
 folder in, restart the app — it'll show up in Settings → Plugins (or a load error will, if
 something's wrong).
 
-See `examples/plugins/hello-sidebar/` for a working minimal example.
+See `examples/plugins/hello-sidebar/` for a working minimal example, or the following for
+fuller examples covering most of the permissions below:
+
+- `examples/plugins/archive-manager/` — zip/unzip via `fs.archive`
+- `examples/plugins/mtg-collection-manager/` — pure-frontend plugin (no backend permissions
+  beyond `ui.sidebar`), uses `fetch` and `localStorage` directly
+- `examples/plugins/database-browser/` — SQLite and MongoDB browsing via `db.sqlite`/`db.mongo`
+- `examples/plugins/git-integration/` — `git status`/`git log` via `git.read`
+- `examples/plugins/run-command/` — scoped-down "run one command" via `system.exec`
 
 ## manifest.json
 
@@ -52,6 +60,17 @@ call, because ungranted methods simply don't exist on the object.
 | Permission | Grants |
 |---|---|
 | `ui.sidebar` | `api.registerSidebarPanel(panel)` |
+| `ui.toolbar` | `api.registerToolbarButton(button)` |
+| `ui.contextMenu` | `api.registerContextMenuItem(item)` |
+| `preview.register` | `api.registerFileHandler(handler)` |
+| `fs.readText` | `api.readTextFile(path)` |
+| `nav.read` | `api.getCurrentPath()`, `api.getSelectedPath()`, `api.onSelectionChange(callback)`, `api.onFolderChange(callback)` |
+| `clipboard.write` | `api.copyToClipboard(text)` |
+| `fs.archive` | `api.createZipArchive(sourcePaths, destZipPath)`, `api.extractZipArchive(zipPath, destDir)` |
+| `db.sqlite` | `api.listSqliteTables(dbPath)`, `api.querySqliteTable(dbPath, table, limit, offset)` |
+| `db.mongo` | `api.listMongoDatabases(uri)`, `api.listMongoCollections(uri, dbName)`, `api.queryMongoCollection(uri, dbName, collection, limit)` |
+| `git.read` | `api.gitStatus(repoPath)`, `api.gitLog(repoPath, limit)` |
+| `system.exec` | `api.runCommand(cwd, command)` |
 
 ### `registerSidebarPanel`
 
@@ -69,6 +88,105 @@ panel is ever torn down.
 
 CSS custom properties from the app's theme (`--bg`, `--fg`, `--fg-muted`, `--border`, `--accent`,
 `--danger`) are available to style against, same as the rest of the app.
+
+### `registerToolbarButton`
+
+```ts
+api.registerToolbarButton({
+  id: string,        // unique within this plugin
+  label: string,     // button content and aria-label — keep it short, toolbar space is limited
+  onClick: () => void,
+});
+```
+
+Renders in the main toolbar after a separator, alongside any other plugins' buttons.
+
+### `registerContextMenuItem`
+
+```ts
+api.registerContextMenuItem({
+  id: string,                      // unique within this plugin
+  label: string,                   // shown as the menu entry's text
+  onClick: (path: string) => void, // called with the right-clicked file/folder's path
+});
+```
+
+Appears in the file list's right-click context menu for every file and folder, after a
+separator below the built-in Copy/Cut/Rename/Delete entries, alongside any other plugins'
+items.
+
+### `registerFileHandler`
+
+```ts
+api.registerFileHandler({
+  id: string,                // unique within this plugin
+  extensions: string[],      // lowercase, no leading dot, e.g. ["csv", "tsv"]
+  render(path: string, container: HTMLElement): void | (() => void),
+});
+```
+
+When the selected file's extension matches one in `extensions`, the preview pane calls
+`render(path, container)` instead of using the built-in image/text/markdown/PDF/audio/video
+preview. `container` is an empty `<div>` — same plain-DOM-API contract as
+`registerSidebarPanel`. If more than one plugin claims the same extension, the first
+registered wins. `render` may return a cleanup function, called when the preview is torn down
+or the selection changes.
+
+### `readTextFile`
+
+`api.readTextFile(path: string): Promise<string>` reads at most 256KB of the file (the same cap
+the built-in text preview uses); longer files are truncated, not rejected.
+
+### `nav.read` methods
+
+- `getCurrentPath(): string | null` — snapshot of the active tab's current folder.
+- `getSelectedPath(): string | null` — snapshot of the active tab's currently selected file/folder.
+- `onSelectionChange(callback: (path: string | null) => void): () => void` — fires whenever the
+  selection changes; returns an unsubscribe function.
+- `onFolderChange(callback: (path: string) => void): () => void` — fires whenever the active tab
+  navigates to a different folder; returns an unsubscribe function.
+
+### `copyToClipboard`
+
+`api.copyToClipboard(text: string): Promise<void>` writes plain text to the system clipboard.
+
+### `fs.archive` methods
+
+- `createZipArchive(sourcePaths: string[], destZipPath: string): Promise<string>` — zips files
+  and/or folders (recursively) into a new archive; returns the final path.
+- `extractZipArchive(zipPath: string, destDir: string): Promise<string>` — extracts an archive
+  into `destDir` (created if missing); returns `destDir`. Entries that would escape `destDir`
+  (a "zip slip" attempt) are skipped.
+
+### `db.sqlite` methods
+
+- `listSqliteTables(dbPath: string): Promise<string[]>`
+- `querySqliteTable(dbPath: string, table: string, limit: number, offset: number): Promise<{ columns: string[]; rows: (string | null)[][] }>`
+  — all values are stringified for display.
+
+### `db.mongo` methods
+
+- `listMongoDatabases(uri: string): Promise<string[]>`
+- `listMongoCollections(uri: string, dbName: string): Promise<string[]>`
+- `queryMongoCollection(uri: string, dbName: string, collection: string, limit: number): Promise<string[]>`
+  — documents as pretty-printable JSON strings. There's no live MongoDB server in this project's
+  test environment, so this path is tested only for malformed-URI and unreachable-server cases;
+  connect/query behavior against a real server is unverified by automated tests.
+
+### `git.read` methods
+
+- `gitStatus(repoPath: string): Promise<{ path: string; status: string }[]>` — parsed
+  `git status --porcelain` output.
+- `gitLog(repoPath: string, limit: number): Promise<{ hash: string; message: string; author: string; date: string }[]>`
+
+Both require a `git` executable on `PATH` and fail if `repoPath` isn't inside a git working tree.
+
+### `system.exec` methods
+
+- `runCommand(cwd: string, command: string): Promise<{ stdout: string; stderr: string; exitCode: number }>`
+  — runs `command` through the OS shell (`cmd /C` on Windows, `sh -c` elsewhere) in `cwd`, with
+  the app's own OS permissions. **No sandboxing, no confirmation prompt.** Only grant this
+  permission to plugins you trust completely.
 
 ## How entry files execute — and why this matters
 
@@ -90,16 +208,22 @@ its `asset://` URL — that pattern is not a reliably documented/supported one i
 this writing (module MIME handling over a custom protocol is unsettled), whereas `new Function`
 is guaranteed, standard JS behavior in any engine, including WebView2's Chromium engine.
 
+## Enabling and disabling plugins
+
+Settings → Plugins lists every plugin found on disk with a checkbox. Unchecking it adds the
+plugin's `id` to `disabledPlugins` in `settings.json` and immediately re-runs plugin loading —
+a disabled plugin's manifest still shows up (so it can be re-enabled), but its entry script
+doesn't execute and nothing it would have registered (sidebar panel, toolbar button, context
+menu item, file handler) appears. Because plugin entry scripts register UI as a side effect
+rather than through an idempotent/declarative API, toggling reloads *all* plugins from a clean
+slate rather than trying to surgically unregister just the one being turned off.
+
 ## Not yet implemented
 
 Everything else `Plan.md`'s Plugin Capabilities list mentions is deferred — each needs a host UI
 surface that doesn't exist yet:
 
-- Toolbar buttons, context menu items (no plugin-extensible slot in `Toolbar`/`FileList` yet)
 - Commands / command palette (no command palette exists in the app at all yet)
-- File type handlers (no file-type-to-handler dispatch exists — Preview is hardcoded by extension)
 - Settings pages (plugins can't currently contribute their own settings UI)
 - Background services, notifications (no lifecycle hooks or notification system exist yet)
-- Enable/disable toggle for installed plugins (currently all valid manifests found on disk load
-  unconditionally — removing a plugin means removing its folder)
 - A real permission-enforcement sandbox (see above)
