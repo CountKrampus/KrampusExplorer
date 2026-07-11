@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { useExplorerStore } from "./useExplorerStore";
+import { useToastStore } from "./useToastStore";
 
 export interface SearchFilters {
   name: string;
@@ -143,7 +144,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       await invoke("clear_search_history");
       set({ history: [] });
     } catch (error) {
-      window.alert(String(error));
+      useToastStore.getState().showToast(String(error));
     }
   },
 
@@ -163,7 +164,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       await invoke("save_search", { name, root, filters: toBackendFilters(get().filters) });
       void get().loadSaved();
     } catch (error) {
-      window.alert(String(error));
+      useToastStore.getState().showToast(String(error));
     }
   },
 
@@ -172,7 +173,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       await invoke("delete_saved_search", { name });
       void get().loadSaved();
     } catch (error) {
-      window.alert(String(error));
+      useToastStore.getState().showToast(String(error));
     }
   },
 

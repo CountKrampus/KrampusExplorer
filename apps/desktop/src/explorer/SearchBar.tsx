@@ -41,7 +41,13 @@ function SearchBar() {
   return (
     <div className="search-bar">
       <form className="search-bar__row" onSubmit={handleSubmit}>
-        <button type="button" className="search-bar__close" onClick={() => setActive(false)} aria-label="Exit search">
+        <button
+          type="button"
+          className="search-bar__close"
+          onClick={() => setActive(false)}
+          aria-label="Exit search"
+          title="Exit search"
+        >
           &#x2190;
         </button>
         <input

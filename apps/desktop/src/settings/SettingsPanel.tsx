@@ -1,6 +1,8 @@
+import { useRef } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useSettingsStore, type IconSize, type StartupMode, type Theme } from "../stores/useSettingsStore";
 import { usePluginStore } from "../stores/usePluginStore";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import "./SettingsPanel.css";
 
 const SHORTCUTS: [string, string][] = [
@@ -12,8 +14,11 @@ const SHORTCUTS: [string, string][] = [
   ["Ctrl+drag", "Copy instead of move when dropping"],
 ];
 
-function SettingsPanel() {
-  const open = useSettingsStore((state) => state.panelOpen);
+// A separate component that only mounts while the panel is open, so useFocusTrap's mount effect
+// (auto-focus, restore focus on unmount) fires fresh on every open — not just once ever, which is
+// what happens if this logic lives in SettingsPanel itself and merely renders `null` while closed
+// (the container stays mounted, so the ref's identity never changes between opens).
+function SettingsPanelBody() {
   const setOpen = useSettingsStore((state) => state.setPanelOpen);
   const theme = useSettingsStore((state) => state.theme);
   const setTheme = useSettingsStore((state) => state.setTheme);
@@ -31,14 +36,28 @@ function SettingsPanel() {
   const pluginErrors = usePluginStore((state) => state.errors);
   const loadPlugins = usePluginStore((state) => state.loadPlugins);
 
-  if (!open) return null;
+  const containerRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(containerRef, () => setOpen(false));
 
   return (
     <div className="settings-panel-backdrop" onClick={() => setOpen(false)}>
-      <div className="settings-panel" onClick={(event) => event.stopPropagation()}>
+      <div
+        className="settings-panel"
+        ref={containerRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="settings-panel__header">
           <h2>Settings</h2>
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close settings">
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close settings"
+            title="Close settings"
+          >
             &#x2715;
           </button>
         </div>
@@ -184,6 +203,14 @@ function SettingsPanel() {
       </div>
     </div>
   );
+}
+
+function SettingsPanel() {
+  const open = useSettingsStore((state) => state.panelOpen);
+
+  if (!open) return null;
+
+  return <SettingsPanelBody />;
 }
 
 export default SettingsPanel;

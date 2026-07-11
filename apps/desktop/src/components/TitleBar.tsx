@@ -14,6 +14,7 @@ function TitleBar() {
         <button
           className="title-bar__button"
           aria-label="Minimize"
+          title="Minimize"
           onClick={() => appWindow.minimize().catch(() => {})}
         >
           &#x2013;
@@ -21,6 +22,7 @@ function TitleBar() {
         <button
           className="title-bar__button"
           aria-label="Maximize"
+          title="Maximize"
           onClick={() => appWindow.toggleMaximize().catch(() => {})}
         >
           &#x25A1;
@@ -28,6 +30,7 @@ function TitleBar() {
         <button
           className="title-bar__button title-bar__button--close"
           aria-label="Close"
+          title="Close"
           onClick={() => appWindow.close().catch(() => {})}
         >
           &#x2715;

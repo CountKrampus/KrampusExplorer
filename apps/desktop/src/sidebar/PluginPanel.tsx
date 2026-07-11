@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RegisteredSidebarPanel } from "../stores/usePluginStore";
 
 interface PluginPanelProps {
@@ -7,13 +7,25 @@ interface PluginPanelProps {
 
 function PluginPanel({ panel }: PluginPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const cleanup = panel.render(container);
+    setError(null);
+    let cleanup: void | (() => void);
+    try {
+      cleanup = panel.render(container);
+    } catch (err) {
+      setError(String(err));
+      return;
+    }
     return () => {
-      cleanup?.();
+      try {
+        cleanup?.();
+      } catch {
+        // The panel is being torn down anyway; a throwing cleanup shouldn't block that.
+      }
       container.innerHTML = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -22,7 +34,13 @@ function PluginPanel({ panel }: PluginPanelProps) {
   return (
     <div className="sidebar__section">
       <div className="sidebar__heading">{panel.title}</div>
-      <div ref={containerRef} />
+      {error ? (
+        <p className="sidebar__message sidebar__message--error">
+          "{panel.title}" failed to load: {error}
+        </p>
+      ) : (
+        <div ref={containerRef} />
+      )}
     </div>
   );
 }

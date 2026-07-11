@@ -1,6 +1,7 @@
 import { invoke, Channel } from "@tauri-apps/api/core";
 import { useExplorerStore } from "../stores/useExplorerStore";
 import { useTransferStore, type TransferProgress } from "../stores/useTransferStore";
+import { useToastStore } from "../stores/useToastStore";
 import { uniqueName } from "../utils/uniqueName";
 
 export type TransferMode = "copy" | "move";
@@ -47,7 +48,7 @@ export async function performTransfer(source: string, destDir: string, mode: Tra
     if (error === "EEXIST") {
       store.setPendingConflict({ source, destDir, mode });
     } else {
-      window.alert(String(error));
+      useToastStore.getState().showToast(String(error));
     }
   }
 }
@@ -78,6 +79,6 @@ export async function resolvePendingConflict(action: "replace" | "keepBoth" | "c
     store.refresh();
     if (conflict.mode === "move") store.setClipboard(null);
   } catch (error) {
-    window.alert(String(error));
+    useToastStore.getState().showToast(String(error));
   }
 }

@@ -8,6 +8,7 @@ import Explorer from "./explorer/Explorer";
 import PreviewPane from "./preview/PreviewPane";
 import ConflictDialog from "./components/ConflictDialog";
 import TransferProgress from "./components/TransferProgress";
+import ToastContainer from "./components/ToastContainer";
 import SettingsPanel from "./settings/SettingsPanel";
 import { useActiveTab, useExplorerStore } from "./stores/useExplorerStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
@@ -109,6 +110,7 @@ function App() {
       <ConflictDialog />
       <TransferProgress />
       <SettingsPanel />
+      <ToastContainer />
     </div>
   );
 }

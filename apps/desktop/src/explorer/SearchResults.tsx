@@ -47,7 +47,15 @@ function SearchResults() {
       </thead>
       <tbody>
         {results.map((result) => (
-          <tr key={result.path} className="search-results__row" onDoubleClick={() => openResult(result.path)}>
+          <tr
+            key={result.path}
+            className="search-results__row"
+            tabIndex={0}
+            onDoubleClick={() => openResult(result.path)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") openResult(result.path);
+            }}
+          >
             <td>
               {result.isDir ? "\u{1F4C1} " : "\u{1F4C4} "}
               {result.name}

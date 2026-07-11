@@ -3,7 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { usePluginStore } from "../stores/usePluginStore";
+import { useToastStore } from "../stores/useToastStore";
 import { performTransfer } from "../services/fileTransfer";
+import ConfirmDialog from "../components/ConfirmDialog";
 import "./FileList.css";
 
 export function formatSize(size: number | null): string {
@@ -36,13 +38,21 @@ function FileList() {
   const setClipboard = useExplorerStore((state) => state.setClipboard);
   const iconSize = useSettingsStore((state) => state.iconSize);
   const contextMenuItems = usePluginStore((state) => state.contextMenuItems);
+  const showToast = useToastStore((state) => state.showToast);
 
   const [menu, setMenu] = useState<ContextMenuState | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
+  const [pendingDeletePath, setPendingDeletePath] = useState<string | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const draggingPathRef = useRef<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  // Guards against a rename committing twice: pressing Enter unmounts the rename <input> on the
+  // next render, which fires a native blur that would otherwise re-invoke commitRename a second
+  // time with the same value.
+  const commitInFlightRef = useRef(false);
+  const suppressNextBlurRef = useRef(false);
 
   const selectedPath = activeTab?.selectedPath ?? null;
   const currentPath = activeTab?.history[activeTab.historyIndex] ?? null;
@@ -82,7 +92,7 @@ function FileList() {
       } else if (isModified && event.key.toLowerCase() === "x") {
         setClipboard({ path: selectedPath, mode: "cut" });
       } else if (event.key === "Delete") {
-        void handleDelete(selectedPath);
+        setPendingDeletePath(selectedPath);
       } else if (event.key === "F2") {
         beginRename(selectedPath);
       }
@@ -104,27 +114,62 @@ function FileList() {
   }
 
   async function commitRename(path: string) {
-    const name = renameValue.trim();
+    if (commitInFlightRef.current) return;
+    commitInFlightRef.current = true;
     setRenamingPath(null);
-    const entry = tab.entries.find((e) => e.path === path);
-    if (!entry || !name || name === entry.name) return;
     try {
-      const newPath = await invoke<string>("rename_entry", { path, newName: name });
-      setSelected(newPath);
-      refresh();
-    } catch (error) {
-      window.alert(String(error));
+      const name = renameValue.trim();
+      const entry = tab.entries.find((e) => e.path === path);
+      if (!entry || !name || name === entry.name) return;
+      try {
+        const newPath = await invoke<string>("rename_entry", { path, newName: name });
+        setSelected(newPath);
+        refresh();
+      } catch (error) {
+        showToast(String(error));
+      }
+    } finally {
+      commitInFlightRef.current = false;
     }
   }
 
+  function cancelRename() {
+    suppressNextBlurRef.current = true;
+    setRenamingPath(null);
+  }
+
   async function handleDelete(path: string) {
-    if (!window.confirm("Move this item to the Recycle Bin?")) return;
     try {
       await invoke("delete_entry", { path });
       setSelected(null);
       refresh();
     } catch (error) {
-      window.alert(String(error));
+      showToast(String(error));
+    }
+  }
+
+  function focusRow(path: string) {
+    rowRefs.current.get(path)?.focus();
+  }
+
+  function handleRowKeyDown(event: React.KeyboardEvent, index: number) {
+    const entries = tab.entries;
+    if (event.key === "ArrowDown" && index < entries.length - 1) {
+      event.preventDefault();
+      const next = entries[index + 1];
+      setSelected(next.path);
+      focusRow(next.path);
+    } else if (event.key === "ArrowUp" && index > 0) {
+      event.preventDefault();
+      const previous = entries[index - 1];
+      setSelected(previous.path);
+      focusRow(previous.path);
+    } else if (event.key === "Enter") {
+      const entry = entries[index];
+      if (entry.isDir) {
+        event.preventDefault();
+        navigateTo(entry.path);
+      }
     }
   }
 
@@ -165,9 +210,14 @@ function FileList() {
           </tr>
         </thead>
         <tbody>
-          {activeTab.entries.map((entry) => (
+          {activeTab.entries.map((entry, index) => (
             <tr
               key={entry.path}
+              ref={(el) => {
+                if (el) rowRefs.current.set(entry.path, el);
+                else rowRefs.current.delete(entry.path);
+              }}
+              tabIndex={0}
               className={[
                 "file-list__row",
                 entry.path === selectedPath ? "file-list__row--selected" : "",
@@ -178,6 +228,7 @@ function FileList() {
               draggable
               onClick={() => setSelected(entry.path)}
               onDoubleClick={() => entry.isDir && navigateTo(entry.path)}
+              onKeyDown={(event) => handleRowKeyDown(event, index)}
               onContextMenu={(event) => {
                 event.preventDefault();
                 setSelected(entry.path);
@@ -214,10 +265,16 @@ function FileList() {
                     value={renameValue}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) => setRenameValue(event.target.value)}
-                    onBlur={() => commitRename(entry.path)}
+                    onBlur={() => {
+                      if (suppressNextBlurRef.current) {
+                        suppressNextBlurRef.current = false;
+                        return;
+                      }
+                      void commitRename(entry.path);
+                    }}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter") commitRename(entry.path);
-                      if (event.key === "Escape") setRenamingPath(null);
+                      if (event.key === "Enter") void commitRename(entry.path);
+                      if (event.key === "Escape") cancelRename();
                     }}
                   />
                 ) : (
@@ -255,8 +312,9 @@ function FileList() {
           <button onClick={() => beginRename(menu.path)}>Rename</button>
           <button
             onClick={() => {
+              const path = menu.path;
               setMenu(null);
-              void handleDelete(menu.path);
+              setPendingDeletePath(path);
             }}
           >
             Delete
@@ -279,6 +337,18 @@ function FileList() {
             </>
           )}
         </div>
+      )}
+      {pendingDeletePath && (
+        <ConfirmDialog
+          message="Move this item to the Recycle Bin?"
+          confirmLabel="Delete"
+          onConfirm={() => {
+            const path = pendingDeletePath;
+            setPendingDeletePath(null);
+            void handleDelete(path);
+          }}
+          onCancel={() => setPendingDeletePath(null)}
+        />
       )}
     </>
   );

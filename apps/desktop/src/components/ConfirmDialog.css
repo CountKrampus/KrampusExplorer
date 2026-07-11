@@ -1,4 +1,4 @@
-.conflict-dialog-backdrop {
+.confirm-dialog-backdrop {
   position: fixed;
   inset: 0;
   display: flex;
@@ -8,7 +8,7 @@
   z-index: 200;
 }
 
-.conflict-dialog {
+.confirm-dialog {
   max-width: 360px;
   padding: 16px;
   background: var(--bg);
@@ -17,23 +17,23 @@
   box-shadow: 0 4px 16px var(--shadow);
 }
 
-.conflict-dialog:focus {
+.confirm-dialog:focus {
   outline: none;
 }
 
-.conflict-dialog p {
+.confirm-dialog p {
   margin: 0 0 12px;
   font-size: 13px;
   color: var(--fg);
 }
 
-.conflict-dialog__actions {
+.confirm-dialog__actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.conflict-dialog__actions button {
+.confirm-dialog__actions button {
   padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -43,6 +43,11 @@
   font-size: 13px;
 }
 
-.conflict-dialog__actions button:hover {
+.confirm-dialog__actions button:hover {
   background: var(--border);
+}
+
+.confirm-dialog__confirm {
+  border-color: var(--danger);
+  color: var(--danger);
 }

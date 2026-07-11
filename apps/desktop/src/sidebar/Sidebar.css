@@ -39,3 +39,14 @@
 .sidebar__item:hover {
   background: var(--border);
 }
+
+.sidebar__message {
+  margin: 0;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.sidebar__message--error {
+  color: var(--danger);
+}
