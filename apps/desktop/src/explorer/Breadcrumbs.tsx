@@ -6,10 +6,14 @@ interface Crumb {
   path: string;
 }
 
-function splitPath(path: string): Crumb[] {
+export function splitPath(path: string): Crumb[] {
   const isWindows = /^[a-zA-Z]:\\/.test(path);
   const separator = isWindows ? "\\" : "/";
   const parts = path.split(separator).filter(Boolean);
+
+  if (parts.length === 0) {
+    return isWindows ? [] : [{ label: "/", path: "/" }];
+  }
 
   const crumbs: Crumb[] = [];
   let current = "";

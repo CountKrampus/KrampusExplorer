@@ -1,7 +1,7 @@
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import "./TabBar.css";
 
-function tabLabel(path: string): string {
+export function tabLabel(path: string): string {
   const parts = path.split(/[/\\]/).filter(Boolean);
   return parts.length > 0 ? parts[parts.length - 1] : path;
 }

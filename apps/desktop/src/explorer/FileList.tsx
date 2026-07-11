@@ -1,7 +1,7 @@
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import "./FileList.css";
 
-function formatSize(size: number | null): string {
+export function formatSize(size: number | null): string {
   if (size === null) return "";
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
@@ -9,7 +9,7 @@ function formatSize(size: number | null): string {
   return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
-function formatModified(modified: string | null): string {
+export function formatModified(modified: string | null): string {
   if (modified === null) return "";
   const seconds = Number(modified);
   if (Number.isNaN(seconds)) return "";
@@ -44,9 +44,9 @@ function FileList() {
     <table className="file-list">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Size</th>
-          <th>Modified</th>
+          <th scope="col">Name</th>
+          <th scope="col">Size</th>
+          <th scope="col">Modified</th>
         </tr>
       </thead>
       <tbody>
