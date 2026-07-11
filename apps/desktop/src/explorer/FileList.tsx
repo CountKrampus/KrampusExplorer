@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
+import { useSettingsStore } from "../stores/useSettingsStore";
 import { performTransfer } from "../services/fileTransfer";
 import "./FileList.css";
 
@@ -32,6 +33,7 @@ function FileList() {
   const setSelected = useExplorerStore((state) => state.setSelected);
   const clipboard = useExplorerStore((state) => state.clipboard);
   const setClipboard = useExplorerStore((state) => state.setClipboard);
+  const iconSize = useSettingsStore((state) => state.iconSize);
 
   const [menu, setMenu] = useState<ContextMenuState | null>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -152,7 +154,7 @@ function FileList() {
 
   return (
     <>
-      <table className="file-list">
+      <table className={`file-list file-list--icon-${iconSize}`}>
         <thead>
           <tr>
             <th scope="col">Name</th>

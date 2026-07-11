@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import { useSearchStore } from "../stores/useSearchStore";
+import { useSettingsStore } from "../stores/useSettingsStore";
 import { performTransfer } from "../services/fileTransfer";
 import { uniqueName } from "../utils/uniqueName";
 import "./Toolbar.css";
@@ -15,6 +16,7 @@ function Toolbar() {
   const clipboard = useExplorerStore((state) => state.clipboard);
   const searching = useSearchStore((state) => state.active);
   const setSearchActive = useSearchStore((state) => state.setActive);
+  const setSettingsOpen = useSettingsStore((state) => state.setPanelOpen);
 
   const canGoBack = !!activeTab && activeTab.historyIndex > 0;
   const canGoForward = !!activeTab && activeTab.historyIndex < activeTab.history.length - 1;
@@ -73,6 +75,9 @@ function Toolbar() {
         aria-pressed={searching}
       >
         &#x1F50D;
+      </button>
+      <button onClick={() => setSettingsOpen(true)} aria-label="Settings">
+        &#x2699;
       </button>
       <span className="toolbar__path">{activeTab?.history[activeTab.historyIndex] ?? ""}</span>
     </div>

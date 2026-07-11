@@ -33,6 +33,24 @@
   outline-offset: -2px;
 }
 
+.file-list--icon-small td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 12px;
+}
+
+.file-list--icon-medium td {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: 13px;
+}
+
+.file-list--icon-large td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 15px;
+}
+
 .file-list__rename-input {
   font-size: 13px;
   padding: 1px 4px;

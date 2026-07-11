@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { useThemeStore } from "../stores/useThemeStore";
+import { useSettingsStore } from "../stores/useSettingsStore";
 
 function systemPrefersDark(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
 export function useResolvedTheme(): "light" | "dark" {
-  const theme = useThemeStore((state) => state.theme);
+  const theme = useSettingsStore((state) => state.theme);
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
 
   useEffect(() => {
