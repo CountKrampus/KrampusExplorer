@@ -7,6 +7,7 @@ import Sidebar from "./sidebar/Sidebar";
 import Explorer from "./explorer/Explorer";
 import PreviewPane from "./preview/PreviewPane";
 import ConflictDialog from "./components/ConflictDialog";
+import TransferProgress from "./components/TransferProgress";
 import SettingsPanel from "./settings/SettingsPanel";
 import { useActiveTab, useExplorerStore } from "./stores/useExplorerStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
@@ -102,6 +103,7 @@ function App() {
       </div>
       <StatusBar />
       <ConflictDialog />
+      <TransferProgress />
       <SettingsPanel />
     </div>
   );

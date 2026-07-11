@@ -1,5 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, Channel } from "@tauri-apps/api/core";
 import { useExplorerStore } from "../stores/useExplorerStore";
+import { useTransferStore, type TransferProgress } from "../stores/useTransferStore";
 import { uniqueName } from "../utils/uniqueName";
 
 export type TransferMode = "copy" | "move";
@@ -15,8 +16,22 @@ async function invokeTransfer(
   destName: string | undefined,
   overwrite: boolean,
 ): Promise<string> {
-  const command = mode === "copy" ? "copy_entry" : "move_entry";
-  return invoke<string>(command, { source, destDir, destName: destName ?? null, overwrite });
+  const command = mode === "copy" ? "copy_entry_with_progress" : "move_entry_with_progress";
+  const setProgress = useTransferStore.getState().setProgress;
+  const onProgress = new Channel<TransferProgress>();
+  onProgress.onmessage = (payload) => setProgress(payload);
+
+  try {
+    return await invoke<string>(command, {
+      source,
+      destDir,
+      destName: destName ?? null,
+      overwrite,
+      onProgress,
+    });
+  } finally {
+    setProgress(null);
+  }
 }
 
 /** Attempts a copy/move; opens the conflict dialog (via store state) instead of failing outright

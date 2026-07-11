@@ -1,0 +1,32 @@
+.transfer-progress {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 260px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 250;
+}
+
+.transfer-progress__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.transfer-progress__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.transfer-progress__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.1s ease-out;
+}
