@@ -10,7 +10,7 @@ function Toolbar() {
 
   const canGoBack = !!activeTab && activeTab.historyIndex > 0;
   const canGoForward = !!activeTab && activeTab.historyIndex < activeTab.history.length - 1;
-  const canGoUp = !!activeTab && activeTab.parent !== null;
+  const canGoUp = !!activeTab && !activeTab.loading && activeTab.parent !== null;
 
   return (
     <div className="toolbar">
