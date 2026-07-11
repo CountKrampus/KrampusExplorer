@@ -10,6 +10,8 @@ pub struct EntryInfo {
     pub size: Option<u64>,
     /// Unix epoch seconds as a string, or `None` if the OS didn't report a modified time.
     pub modified: Option<String>,
+    /// Unix epoch seconds as a string, or `None` if the OS didn't report a creation time.
+    pub created: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -34,6 +36,11 @@ pub fn list_directory(path: &str) -> Result<DirectoryListing, String> {
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_secs().to_string());
+        let created = metadata
+            .created()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs().to_string());
 
         entries.push(EntryInfo {
             name: entry.file_name().to_string_lossy().to_string(),
@@ -45,6 +52,7 @@ pub fn list_directory(path: &str) -> Result<DirectoryListing, String> {
                 Some(metadata.len())
             },
             modified,
+            created,
         });
     }
 
@@ -78,6 +86,7 @@ mod tests {
         assert_eq!(names, vec!["a_folder", "b_folder", "a_file.txt"]);
         assert!(listing.entries[0].is_dir);
         assert!(listing.entries[2].size.is_some());
+        assert!(listing.entries[2].created.is_some());
         assert_eq!(
             listing.parent,
             dir.path().parent().map(|p| p.to_string_lossy().to_string())

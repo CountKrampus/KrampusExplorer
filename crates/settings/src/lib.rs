@@ -28,6 +28,24 @@ pub struct Settings {
     /// (so it can be re-enabled), but its entry script is never executed.
     #[serde(default)]
     pub disabled_plugins: Vec<String>,
+    /// Paths the user has pinned to the sidebar's Favorites section, in the order they were
+    /// added.
+    #[serde(default)]
+    pub favorite_paths: Vec<String>,
+    /// IDs of sidebar sections the user has collapsed (built-in section IDs "drives"/
+    /// "favorites", or a plugin's panel ID for plugin sections).
+    #[serde(default)]
+    pub collapsed_sidebar_sections: Vec<String>,
+    /// Sidebar width in pixels. Clamped to [140, 480] on the frontend, not here — the backend
+    /// just persists whatever it's given.
+    #[serde(default = "default_sidebar_width")]
+    pub sidebar_width: u32,
+    /// "name" | "size" | "type" | "modified" | "created"
+    #[serde(default = "default_sort_field")]
+    pub sort_field: String,
+    /// "asc" | "desc"
+    #[serde(default = "default_sort_direction")]
+    pub sort_direction: String,
 }
 
 impl Default for Settings {
@@ -40,8 +58,25 @@ impl Default for Settings {
             icon_size: "medium".to_string(),
             last_location: None,
             disabled_plugins: Vec::new(),
+            favorite_paths: Vec::new(),
+            collapsed_sidebar_sections: Vec::new(),
+            sidebar_width: default_sidebar_width(),
+            sort_field: default_sort_field(),
+            sort_direction: default_sort_direction(),
         }
     }
+}
+
+fn default_sidebar_width() -> u32 {
+    200
+}
+
+fn default_sort_field() -> String {
+    "name".to_string()
+}
+
+fn default_sort_direction() -> String {
+    "asc".to_string()
 }
 
 fn default_settings_path() -> PathBuf {
@@ -104,6 +139,11 @@ mod tests {
             icon_size: "large".to_string(),
             last_location: Some("C:\\Users\\boo\\Documents".to_string()),
             disabled_plugins: vec!["quick-notes".to_string()],
+            favorite_paths: vec!["C:\\Users\\boo\\Documents".to_string()],
+            collapsed_sidebar_sections: vec!["drives".to_string()],
+            sidebar_width: 260,
+            sort_field: "size".to_string(),
+            sort_direction: "desc".to_string(),
         };
 
         save_settings(&settings, Some(&path)).unwrap();
@@ -145,6 +185,75 @@ mod tests {
 
         assert_eq!(settings.theme, "dark");
         assert_eq!(settings.disabled_plugins, Vec::<String>::new());
+    }
+
+    #[test]
+    fn load_settings_fills_in_missing_favorite_paths_without_resetting_everything_else() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        // Simulates a settings.json written before `favorite_paths` existed.
+        std::fs::write(
+            &path,
+            r##"{"theme":"dark","accentColor":"#ff0000","startupMode":"custom","startupCustomPath":"C:\\Projects","iconSize":"large"}"##,
+        )
+        .unwrap();
+
+        let settings = load_settings(Some(&path));
+
+        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.favorite_paths, Vec::<String>::new());
+    }
+
+    #[test]
+    fn load_settings_fills_in_missing_collapsed_sidebar_sections_without_resetting_everything_else()
+    {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            r##"{"theme":"dark","accentColor":"#ff0000","startupMode":"custom","startupCustomPath":"C:\\Projects","iconSize":"large"}"##,
+        )
+        .unwrap();
+
+        let settings = load_settings(Some(&path));
+
+        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.collapsed_sidebar_sections, Vec::<String>::new());
+    }
+
+    #[test]
+    fn load_settings_fills_in_missing_sidebar_width_with_the_default_without_resetting_everything_else(
+    ) {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            r##"{"theme":"dark","accentColor":"#ff0000","startupMode":"custom","startupCustomPath":"C:\\Projects","iconSize":"large"}"##,
+        )
+        .unwrap();
+
+        let settings = load_settings(Some(&path));
+
+        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.sidebar_width, 200);
+    }
+
+    #[test]
+    fn load_settings_fills_in_missing_sort_fields_with_defaults_without_resetting_everything_else()
+    {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            r##"{"theme":"dark","accentColor":"#ff0000","startupMode":"custom","startupCustomPath":"C:\\Projects","iconSize":"large"}"##,
+        )
+        .unwrap();
+
+        let settings = load_settings(Some(&path));
+
+        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.sort_field, "name");
+        assert_eq!(settings.sort_direction, "asc");
     }
 
     #[test]
