@@ -9,11 +9,21 @@ pub struct Settings {
     /// "light" | "dark" | "system"
     pub theme: String,
     pub accent_color: String,
-    /// "home" | "custom" — where the first tab opens on launch.
+    /// "home" | "custom" | "last" — where the first tab opens on launch.
     pub startup_mode: String,
     pub startup_custom_path: Option<String>,
     /// "small" | "medium" | "large"
     pub icon_size: String,
+    /// Most recently navigated-to folder, updated on every navigation. Used when
+    /// `startup_mode` is "last"; kept even when a different startup mode is active, so
+    /// switching back to "last" doesn't start from nothing.
+    ///
+    /// `#[serde(default)]` matters here beyond the missing-file case: without it, loading a
+    /// settings.json written before this field existed would fail deserialization entirely
+    /// and silently reset every other setting to defaults too (load_settings falls back to
+    /// `Settings::default()` on ANY parse error, not just per-field).
+    #[serde(default)]
+    pub last_location: Option<String>,
 }
 
 impl Default for Settings {
@@ -24,6 +34,7 @@ impl Default for Settings {
             startup_mode: "home".to_string(),
             startup_custom_path: None,
             icon_size: "medium".to_string(),
+            last_location: None,
         }
     }
 }
@@ -86,12 +97,31 @@ mod tests {
             startup_mode: "custom".to_string(),
             startup_custom_path: Some("C:\\Projects".to_string()),
             icon_size: "large".to_string(),
+            last_location: Some("C:\\Users\\boo\\Documents".to_string()),
         };
 
         save_settings(&settings, Some(&path)).unwrap();
         let loaded = load_settings(Some(&path));
 
         assert_eq!(loaded, settings);
+    }
+
+    #[test]
+    fn load_settings_fills_in_missing_last_location_without_resetting_everything_else() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        // Simulates a settings.json written before `last_location` existed.
+        std::fs::write(
+            &path,
+            r##"{"theme":"dark","accentColor":"#ff0000","startupMode":"custom","startupCustomPath":"C:\\Projects","iconSize":"large"}"##,
+        )
+        .unwrap();
+
+        let settings = load_settings(Some(&path));
+
+        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.startup_mode, "custom");
+        assert_eq!(settings.last_location, None);
     }
 
     #[test]

@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 
 export type Theme = "light" | "dark" | "system";
-export type StartupMode = "home" | "custom";
+export type StartupMode = "home" | "custom" | "last";
 export type IconSize = "small" | "medium" | "large";
 
 interface BackendSettings {
@@ -11,6 +11,7 @@ interface BackendSettings {
   startupMode: string;
   startupCustomPath: string | null;
   iconSize: string;
+  lastLocation: string | null;
 }
 
 const DEFAULTS: BackendSettings = {
@@ -19,6 +20,7 @@ const DEFAULTS: BackendSettings = {
   startupMode: "home",
   startupCustomPath: null,
   iconSize: "medium",
+  lastLocation: null,
 };
 
 function asTheme(value: string): Theme {
@@ -26,7 +28,7 @@ function asTheme(value: string): Theme {
 }
 
 function asStartupMode(value: string): StartupMode {
-  return value === "custom" ? "custom" : "home";
+  return value === "custom" || value === "last" ? value : "home";
 }
 
 function asIconSize(value: string): IconSize {
@@ -40,6 +42,7 @@ interface SettingsState {
   startupMode: StartupMode;
   startupCustomPath: string | null;
   iconSize: IconSize;
+  lastLocation: string | null;
   panelOpen: boolean;
   loadSettings: () => Promise<void>;
   setTheme: (theme: Theme) => void;
@@ -47,9 +50,13 @@ interface SettingsState {
   setStartupMode: (mode: StartupMode) => void;
   setStartupCustomPath: (path: string | null) => void;
   setIconSize: (size: IconSize) => void;
+  setLastLocation: (path: string) => void;
   setPanelOpen: (open: boolean) => void;
 }
 
+// Failures here are logged, not surfaced with an alert — setLastLocation fires on every
+// folder navigation, so a transient write failure alerting the user on every click would be
+// far more disruptive than the failure itself (the setting just won't have updated).
 function persist(state: SettingsState) {
   const payload: BackendSettings = {
     theme: state.theme,
@@ -57,9 +64,10 @@ function persist(state: SettingsState) {
     startupMode: state.startupMode,
     startupCustomPath: state.startupCustomPath,
     iconSize: state.iconSize,
+    lastLocation: state.lastLocation,
   };
   invoke("save_settings", { settings: payload }).catch((error: string) => {
-    window.alert(`Could not save settings: ${error}`);
+    console.error("Could not save settings:", error);
   });
 }
 
@@ -70,6 +78,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   startupMode: asStartupMode(DEFAULTS.startupMode),
   startupCustomPath: DEFAULTS.startupCustomPath,
   iconSize: asIconSize(DEFAULTS.iconSize),
+  lastLocation: DEFAULTS.lastLocation,
   panelOpen: false,
 
   loadSettings: async () => {
@@ -81,6 +90,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         startupMode: asStartupMode(settings.startupMode),
         startupCustomPath: settings.startupCustomPath,
         iconSize: asIconSize(settings.iconSize),
+        lastLocation: settings.lastLocation,
         loaded: true,
       });
     } catch {
@@ -112,6 +122,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setIconSize: (iconSize) => {
     set({ iconSize });
+    persist(get());
+  },
+
+  setLastLocation: (lastLocation) => {
+    if (get().lastLocation === lastLocation) return;
+    set({ lastLocation });
     persist(get());
   },
 

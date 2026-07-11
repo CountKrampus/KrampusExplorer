@@ -68,7 +68,7 @@ function SettingsPanel() {
         <section className="settings-panel__section">
           <h3>Startup folder</h3>
           <div className="settings-panel__options">
-            {(["home", "custom"] as StartupMode[]).map((option) => (
+            {(["home", "last", "custom"] as StartupMode[]).map((option) => (
               <label key={option}>
                 <input
                   type="radio"
@@ -76,7 +76,7 @@ function SettingsPanel() {
                   checked={startupMode === option}
                   onChange={() => setStartupMode(option)}
                 />
-                {option === "home" ? "Home folder" : "Custom folder"}
+                {option === "home" ? "Home folder" : option === "last" ? "Last opened folder" : "Custom folder"}
               </label>
             ))}
           </div>

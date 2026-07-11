@@ -8,7 +8,7 @@ import Explorer from "./explorer/Explorer";
 import PreviewPane from "./preview/PreviewPane";
 import ConflictDialog from "./components/ConflictDialog";
 import SettingsPanel from "./settings/SettingsPanel";
-import { useExplorerStore } from "./stores/useExplorerStore";
+import { useActiveTab, useExplorerStore } from "./stores/useExplorerStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { usePluginStore } from "./stores/usePluginStore";
 import { useTabFetcher } from "./hooks/useTabFetcher";
@@ -27,7 +27,10 @@ function App() {
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const startupMode = useSettingsStore((state) => state.startupMode);
   const startupCustomPath = useSettingsStore((state) => state.startupCustomPath);
+  const lastLocation = useSettingsStore((state) => state.lastLocation);
+  const setLastLocation = useSettingsStore((state) => state.setLastLocation);
   const accentColor = useSettingsStore((state) => state.accentColor);
+  const activeTab = useActiveTab();
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
@@ -50,10 +53,14 @@ function App() {
   useEffect(() => {
     if (tabs.length !== 0 || !settingsLoaded) return;
 
-    const startPath =
-      startupMode === "custom" && startupCustomPath
-        ? Promise.resolve(startupCustomPath)
-        : invoke<string>("get_default_start_path");
+    let startPath: Promise<string>;
+    if (startupMode === "custom" && startupCustomPath) {
+      startPath = Promise.resolve(startupCustomPath);
+    } else if (startupMode === "last" && lastLocation) {
+      startPath = Promise.resolve(lastLocation);
+    } else {
+      startPath = invoke<string>("get_default_start_path");
+    }
 
     startPath
       .then((path) => {
@@ -64,7 +71,12 @@ function App() {
       .catch((error: string) => {
         setBootstrapError(String(error));
       });
-  }, [tabs.length, settingsLoaded, startupMode, startupCustomPath, newTab]);
+  }, [tabs.length, settingsLoaded, startupMode, startupCustomPath, lastLocation, newTab]);
+
+  useEffect(() => {
+    const currentPath = activeTab?.history[activeTab.historyIndex];
+    if (currentPath) setLastLocation(currentPath);
+  }, [activeTab?.history, activeTab?.historyIndex, setLastLocation]);
 
   useTabFetcher();
 
