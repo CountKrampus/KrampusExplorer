@@ -1,13 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
+import { performTransfer } from "../services/fileTransfer";
+import { uniqueName } from "../utils/uniqueName";
 import "./Toolbar.css";
-
-function uniqueName(baseName: string, existingNames: Set<string>): string {
-  if (!existingNames.has(baseName)) return baseName;
-  let counter = 2;
-  while (existingNames.has(`${baseName} (${counter})`)) counter++;
-  return `${baseName} (${counter})`;
-}
 
 function Toolbar() {
   const activeTab = useActiveTab();
@@ -16,11 +11,19 @@ function Toolbar() {
   const up = useExplorerStore((state) => state.up);
   const refresh = useExplorerStore((state) => state.refresh);
   const setSelected = useExplorerStore((state) => state.setSelected);
+  const clipboard = useExplorerStore((state) => state.clipboard);
 
   const canGoBack = !!activeTab && activeTab.historyIndex > 0;
   const canGoForward = !!activeTab && activeTab.historyIndex < activeTab.history.length - 1;
   const canGoUp = !!activeTab && !activeTab.loading && activeTab.parent !== null;
   const canCreate = !!activeTab && !activeTab.loading && !activeTab.error;
+  const canPaste = canCreate && !!clipboard;
+
+  function paste() {
+    if (!activeTab || !clipboard) return;
+    const destDir = activeTab.history[activeTab.historyIndex];
+    void performTransfer(clipboard.path, destDir, clipboard.mode === "cut" ? "move" : "copy");
+  }
 
   async function createNew(kind: "folder" | "file") {
     if (!activeTab) return;
@@ -56,6 +59,9 @@ function Toolbar() {
       </button>
       <button disabled={!canCreate} onClick={() => createNew("file")} aria-label="New file">
         &#x1F4C4;+
+      </button>
+      <button disabled={!canPaste} onClick={paste} aria-label="Paste">
+        &#x1F4CB;
       </button>
       <span className="toolbar__path">{activeTab?.history[activeTab.historyIndex] ?? ""}</span>
     </div>

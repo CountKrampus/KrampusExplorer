@@ -6,6 +6,7 @@ import StatusBar from "./components/StatusBar";
 import Sidebar from "./sidebar/Sidebar";
 import Explorer from "./explorer/Explorer";
 import PreviewPane from "./preview/PreviewPane";
+import ConflictDialog from "./components/ConflictDialog";
 import { useExplorerStore } from "./stores/useExplorerStore";
 import { useTabFetcher } from "./hooks/useTabFetcher";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
@@ -60,6 +61,7 @@ function App() {
         <PreviewPane />
       </div>
       <StatusBar />
+      <ConflictDialog />
     </div>
   );
 }

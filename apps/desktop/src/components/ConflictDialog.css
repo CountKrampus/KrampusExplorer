@@ -1,0 +1,44 @@
+.conflict-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+}
+
+.conflict-dialog {
+  max-width: 360px;
+  padding: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.conflict-dialog p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.conflict-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.conflict-dialog__actions button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.conflict-dialog__actions button:hover {
+  background: var(--border);
+}

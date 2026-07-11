@@ -15,9 +15,22 @@ export interface Tab {
 
 type TabResult = { entries: EntryInfo[]; parent: string | null } | { error: string };
 
+export interface Clipboard {
+  path: string;
+  mode: "copy" | "cut";
+}
+
+export interface PendingConflict {
+  source: string;
+  destDir: string;
+  mode: "copy" | "move";
+}
+
 interface ExplorerState {
   tabs: Tab[];
   activeTabId: string;
+  clipboard: Clipboard | null;
+  pendingConflict: PendingConflict | null;
   navigateTo: (path: string) => void;
   back: () => void;
   forward: () => void;
@@ -28,6 +41,8 @@ interface ExplorerState {
   setActiveTab: (id: string) => void;
   setTabResult: (id: string, result: TabResult) => void;
   setSelected: (path: string | null) => void;
+  setClipboard: (clipboard: Clipboard | null) => void;
+  setPendingConflict: (conflict: PendingConflict | null) => void;
 }
 
 let nextTabId = 1;
@@ -48,6 +63,8 @@ function createTab(path: string): Tab {
 export const useExplorerStore = create<ExplorerState>((set, get) => ({
   tabs: [],
   activeTabId: "",
+  clipboard: null,
+  pendingConflict: null,
 
   navigateTo: (path) =>
     set((state) => ({
@@ -145,6 +162,10 @@ export const useExplorerStore = create<ExplorerState>((set, get) => ({
         tab.id === state.activeTabId ? { ...tab, selectedPath: path } : tab,
       ),
     })),
+
+  setClipboard: (clipboard) => set({ clipboard }),
+
+  setPendingConflict: (pendingConflict) => set({ pendingConflict }),
 }));
 
 export function useActiveTab(): Tab | undefined {

@@ -28,6 +28,11 @@
   color: white;
 }
 
+.file-list__row--drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
 .file-list__rename-input {
   font-size: 13px;
   padding: 1px 4px;
