@@ -93,9 +93,10 @@ cd apps/desktop
 npm run tauri build
 ```
 
-Packaged, signed release installers aren't set up yet (Phase 8 in-progress) — `tauri build`
-currently produces an unsigned local build under
-`apps/desktop/src-tauri/target/release/bundle/`.
+Produces an unsigned local MSI/NSIS installer under
+`apps/desktop/src-tauri/target/release/bundle/`. Signed releases are published automatically by
+CI on tag push — see [docs/releasing.md](docs/releasing.md) for the full release process and how
+auto-update is wired up.
 
 ## Workspace checks
 
@@ -115,7 +116,8 @@ npm run build
 Actively developed. Phases 1–7 of the [roadmap](Plan.md#roadmap) (foundation, application
 shell, filesystem, search, preview, settings, and the plugin SDK) are complete; Phase 8
 (polish, optimization, testing, documentation, release builds) is in progress — see
-[docs/performance.md](docs/performance.md) for the performance-specific notes.
+[docs/performance.md](docs/performance.md) for performance notes and
+[docs/releasing.md](docs/releasing.md) for the build/release process.
 
 ## License
 

@@ -1,0 +1,98 @@
+# Building and releasing
+
+This covers three things: building a local (unsigned) installer, how the signed CI release
+pipeline works, and how to cut a new release.
+
+## Local build (unsigned)
+
+```sh
+cd apps/desktop
+npm install
+npm run tauri build
+```
+
+Produces an MSI and an NSIS `setup.exe` under
+`apps/desktop/src-tauri/target/release/bundle/` (`msi/` and `nsis/`). These aren't signed with
+the updater key, so the auto-updater won't offer them and Windows SmartScreen will warn on first
+run — fine for local testing, not for distribution.
+
+## Signed CI releases
+
+`.github/workflows/release.yml` builds, signs, and publishes installers to GitHub Releases
+whenever a `v*` tag is pushed. It runs on `windows-latest`, builds via
+`tauri-apps/tauri-action@v1`, and uploads the MSI, the NSIS `setup.exe`, their `.sig` signature
+files, and `latest.json` (the file the in-app updater polls) to the release.
+
+### One-time setup
+
+**Signing key** — generated with:
+
+```powershell
+npx tauri signer generate -f -p "<password>" -w "$env:USERPROFILE\.tauri\<name>.key"
+```
+
+Run this on your own machine, not through an agent/CI shell — the password must never be passed
+as a bare CLI argument or committed anywhere. The command prints a public key
+(`dW50cnVzdGVk...`); put that string in `apps/desktop/src-tauri/tauri.conf.json` under
+`plugins.updater.pubkey`. The private key file itself stays local and is never committed.
+
+**Repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | Full contents of the `.key` file generated above |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | The password used with `-p` when generating the key |
+
+If you ever regenerate the key (e.g. to add or change the password), you must update **both**
+the `pubkey` in `tauri.conf.json` and the `TAURI_SIGNING_PRIVATE_KEY` secret — they have to match
+the same keypair, and the password secret has to match what the key was actually encrypted with.
+A mismatch here is the most common cause of the release workflow failing at the sign/publish
+step.
+
+**Repo visibility** — the updater's `endpoints` in `tauri.conf.json` point at
+`.../releases/latest/download/latest.json` on GitHub. For unauthenticated downloads to work
+(the desktop app has no embedded GitHub token), the repository needs to be public.
+
+### Cutting a release
+
+1. Bump `version` in `apps/desktop/src-tauri/tauri.conf.json` if it hasn't already been bumped.
+2. Make sure `main`/`master` is green: `cargo test --workspace`, `cargo clippy --workspace
+   --all-targets -- -D warnings`, and in `apps/desktop`: `npm test -- --run && npm run build`.
+3. Tag and push:
+
+   ```sh
+   git tag -a vX.Y.Z -m "Krampus Explorer vX.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+4. Watch the **Release** workflow under the Actions tab. On success it publishes a GitHub
+   Release with the installers attached and `latest.json` for the updater.
+
+Re-running a failed release for the same version means deleting the tag both locally and on the
+remote before re-pushing it (`git tag -d vX.Y.Z && git push origin :refs/tags/vX.Y.Z`) — treat
+this as a deliberate, explicit step rather than something to do reflexively, since it discards
+the failed run's tag history.
+
+### Common CI failure: stale lockfile
+
+The release workflow uses `npm ci`, which fails hard on any drift between `package.json` and
+`package-lock.json` (unlike `npm install`, which quietly patches it up). If a dependency was
+added with `npm install` but the lockfile update didn't fully propagate (missing optional
+platform packages for a transitive dependency is the usual symptom), regenerate it clean:
+
+```sh
+cd apps/desktop
+rm -rf node_modules package-lock.json
+npm install
+rm -rf node_modules
+npm ci   # should succeed with no changes to package-lock.json
+```
+
+Commit the regenerated `package-lock.json` before re-tagging.
+
+## Auto-update
+
+`apps/desktop/src/stores/useUpdateStore.ts` wraps `@tauri-apps/plugin-updater`. On launch,
+`App.tsx` silently calls `checkForUpdates()` — no toast or dialog. Settings → Updates shows the
+current version, lets the user manually check, and (if an update is available) download and
+install it, which relaunches the app via `@tauri-apps/plugin-process`.
