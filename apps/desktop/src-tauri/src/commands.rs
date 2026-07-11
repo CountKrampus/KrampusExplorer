@@ -1,4 +1,5 @@
 use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo};
+use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
 
 #[tauri::command]
 pub fn get_drives() -> Vec<DriveInfo> {
@@ -53,4 +54,39 @@ pub fn move_entry(
     overwrite: bool,
 ) -> Result<String, String> {
     explorer_filesystem::move_entry(&source, &dest_dir, dest_name.as_deref(), overwrite)
+}
+
+#[tauri::command]
+pub fn search_files(root: String, filters: SearchFilters) -> Result<Vec<SearchResult>, String> {
+    explorer_search::build_index(&root, None)?;
+    let results = explorer_search::search(&root, &filters, None)?;
+    if let Some(name) = &filters.name {
+        explorer_search::record_search(&root, name, None)?;
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub fn get_search_history(limit: u32) -> Result<Vec<HistoryEntry>, String> {
+    explorer_search::get_history(limit, None)
+}
+
+#[tauri::command]
+pub fn clear_search_history() -> Result<(), String> {
+    explorer_search::clear_history(None)
+}
+
+#[tauri::command]
+pub fn save_search(name: String, root: String, filters: SearchFilters) -> Result<(), String> {
+    explorer_search::save_search(&name, &root, &filters, None)
+}
+
+#[tauri::command]
+pub fn list_saved_searches() -> Result<Vec<SavedSearch>, String> {
+    explorer_search::list_saved(None)
+}
+
+#[tauri::command]
+pub fn delete_saved_search(name: String) -> Result<(), String> {
+    explorer_search::delete_saved(&name, None)
 }

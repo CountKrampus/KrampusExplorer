@@ -13,6 +13,12 @@ pub fn run() {
             commands::create_file,
             commands::copy_entry,
             commands::move_entry,
+            commands::search_files,
+            commands::get_search_history,
+            commands::clear_search_history,
+            commands::save_search,
+            commands::list_saved_searches,
+            commands::delete_saved_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
