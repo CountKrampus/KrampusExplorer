@@ -7,6 +7,10 @@ pub fn run() {
             commands::get_drives,
             commands::get_directory_listing,
             commands::get_default_start_path,
+            commands::rename_entry,
+            commands::delete_entry,
+            commands::create_folder,
+            commands::create_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
