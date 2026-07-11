@@ -89,4 +89,27 @@ mod tests {
         let result = list_directory("this-path-should-not-exist-12345");
         assert!(result.is_err());
     }
+
+    /// Plan.md targets directory loading under 100ms. CI runners can be slower than a dev
+    /// machine, so this asserts a looser 500ms regression-guard bound rather than the literal
+    /// target — it exists to catch an accidental O(n^2) or per-entry syscall-storm regression,
+    /// not to certify the 100ms target itself (that needs measuring against the real Tauri
+    /// command round-trip, not just this function in isolation).
+    #[test]
+    fn list_directory_handles_five_thousand_entries_without_a_scaling_regression() {
+        let dir = tempdir().unwrap();
+        for i in 0..5000 {
+            fs::write(dir.path().join(format!("file_{i:05}.txt")), b"x").unwrap();
+        }
+
+        let start = std::time::Instant::now();
+        let listing = list_directory(dir.path().to_str().unwrap()).unwrap();
+        let elapsed = start.elapsed();
+
+        assert_eq!(listing.entries.len(), 5000);
+        assert!(
+            elapsed.as_millis() < 500,
+            "list_directory took {elapsed:?} for 5000 entries, expected well under 500ms"
+        );
+    }
 }

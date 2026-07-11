@@ -124,6 +124,23 @@ mod tests {
     }
 
     #[test]
+    fn query_sqlite_table_formats_blobs_and_nulls_for_display() {
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+        let conn = Connection::open(&db_path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE files (id INTEGER PRIMARY KEY, data BLOB, note TEXT);
+             INSERT INTO files (data, note) VALUES (X'01020304', NULL);",
+        )
+        .unwrap();
+
+        let data = query_sqlite_table(db_path.to_str().unwrap(), "files", 10, 0).unwrap();
+
+        assert_eq!(data.rows[0][1], Some("<4 bytes>".to_string()));
+        assert_eq!(data.rows[0][2], None);
+    }
+
+    #[test]
     fn query_sqlite_table_respects_limit_and_offset() {
         let dir = tempdir().unwrap();
         let db_path = dir.path().join("test.db");

@@ -10,6 +10,22 @@ fn validate_name(name: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Whether `a` and `b` name the same file on this platform's filesystem semantics, even if
+/// `new_path.exists()` would report true — used to allow a case-only rename (e.g.
+/// "readme.txt" -> "README.txt") on case-insensitive filesystems instead of rejecting it as a
+/// conflict with itself.
+#[cfg(windows)]
+fn is_same_entry(a: &Path, b: &Path) -> bool {
+    a != b && a.to_string_lossy().to_lowercase() == b.to_string_lossy().to_lowercase()
+}
+
+#[cfg(not(windows))]
+fn is_same_entry(_a: &Path, _b: &Path) -> bool {
+    // Case-sensitive filesystems never alias two differently-cased paths to the same entry, so
+    // there's no case-only-rename exception to make here.
+    false
+}
+
 pub fn rename_entry(path: &str, new_name: &str) -> Result<String, String> {
     validate_name(new_name)?;
     let old_path = Path::new(path);
@@ -17,7 +33,7 @@ pub fn rename_entry(path: &str, new_name: &str) -> Result<String, String> {
         .parent()
         .ok_or_else(|| format!("'{path}' has no parent directory"))?;
     let new_path = parent.join(new_name);
-    if new_path.exists() {
+    if new_path.exists() && !is_same_entry(&new_path, old_path) {
         return Err(format!("'{new_name}' already exists"));
     }
     std::fs::rename(old_path, &new_path).map_err(|e| format!("Could not rename '{path}': {e}"))?;
@@ -277,6 +293,32 @@ mod tests {
 
         assert!(result.is_err());
         assert!(old.exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn rename_entry_allows_a_case_only_change() {
+        let dir = tempdir().unwrap();
+        let old = dir.path().join("readme.txt");
+        fs::write(&old, b"hi").unwrap();
+
+        let new_path = rename_entry(old.to_str().unwrap(), "README.txt").unwrap();
+
+        assert!(new_path.ends_with("README.txt"));
+        assert_eq!(fs::read(&new_path).unwrap(), b"hi");
+    }
+
+    #[test]
+    fn rename_entry_handles_unicode_names() {
+        let dir = tempdir().unwrap();
+        let old = dir.path().join("file.txt");
+        fs::write(&old, b"hi").unwrap();
+
+        let new_path =
+            rename_entry(old.to_str().unwrap(), "\u{1F4C1}_\u{00e9}\u{00e8}.txt").unwrap();
+
+        assert!(Path::new(&new_path).exists());
+        assert!(!old.exists());
     }
 
     #[test]

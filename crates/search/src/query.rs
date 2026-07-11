@@ -118,6 +118,32 @@ mod tests {
         (source, db, root)
     }
 
+    /// Regression test for `escape_like`: without escaping, a literal "%" or "_" in the search
+    /// term would be interpreted as a SQL LIKE wildcard, matching far more (or differently) than
+    /// the user typed. A file named "100%done.txt" searched for by its literal "%" must not
+    /// match unrelated files that merely happen to exist.
+    #[test]
+    fn search_treats_percent_and_underscore_in_the_query_as_literal_characters() {
+        let source = tempdir().unwrap();
+        fs::write(source.path().join("100%done.txt"), b"x").unwrap();
+        fs::write(source.path().join("100Xdone.txt"), b"x").unwrap();
+        fs::write(source.path().join("unrelated.txt"), b"x").unwrap();
+
+        let db = tempdir().unwrap();
+        let db_path = db.path().join("search.db");
+        let root = source.path().to_str().unwrap().to_string();
+        build_index(&root, Some(&db_path)).unwrap();
+
+        let filters = SearchFilters {
+            name: Some("100%done".to_string()),
+            ..Default::default()
+        };
+        let results = search(&root, &filters, Some(&db_path)).unwrap();
+
+        let names: Vec<&str> = results.iter().map(|r| r.name.as_str()).collect();
+        assert_eq!(names, vec!["100%done.txt"]);
+    }
+
     #[test]
     fn search_matches_name_case_insensitively() {
         let (_source, db, root) = setup();
@@ -175,5 +201,54 @@ mod tests {
         let results = search(&root, &SearchFilters::default(), Some(&db_path)).unwrap();
 
         assert_eq!(results.len(), 4);
+    }
+
+    /// Plan.md's search target is "instant where indexed" — this exercises the query path
+    /// (not the filesystem walk, which build_index's own tests cover separately) against 5000
+    /// already-indexed rows, inserted directly via SQL rather than real files so the test
+    /// measures query latency, not disk I/O. 200ms is a generous regression-guard bound, not a
+    /// literal target: it exists to catch an accidental full-table-scan (e.g. a filter that
+    /// stops using the `(root, name)` index), not to certify "instant".
+    #[test]
+    fn search_scales_to_five_thousand_indexed_entries() {
+        let db = tempdir().unwrap();
+        let db_path = db.path().join("search.db");
+        let root = "C:\\synthetic-root";
+        let mut conn = crate::db::open_connection(Some(&db_path)).unwrap();
+        let tx = conn.transaction().unwrap();
+        for i in 0..5000 {
+            tx.execute(
+                "INSERT INTO index_entries (root, path, name, is_dir, size, modified)
+                 VALUES (?1, ?2, ?3, 0, ?4, 0)",
+                rusqlite::params![
+                    root,
+                    format!("{root}\\unique_item_{i:05}.txt"),
+                    format!("unique_item_{i:05}.txt"),
+                    i as i64,
+                ],
+            )
+            .unwrap();
+        }
+        tx.commit().unwrap();
+        drop(conn);
+
+        // Every row's name is "unique_item_NNNNN.txt" with a fixed-width zero-padded number, so
+        // searching for one row's full name can only match that row: a same-length numeric field
+        // can't accidentally equal a different row's number as a substring.
+        let filters = SearchFilters {
+            name: Some("unique_item_02500.txt".to_string()),
+            ..Default::default()
+        };
+
+        let start = std::time::Instant::now();
+        let results = search(root, &filters, Some(&db_path)).unwrap();
+        let elapsed = start.elapsed();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name, "unique_item_02500.txt");
+        assert!(
+            elapsed.as_millis() < 200,
+            "search took {elapsed:?} against 5000 indexed rows, expected well under 200ms"
+        );
     }
 }
