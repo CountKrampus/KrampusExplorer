@@ -112,14 +112,31 @@ export const usePluginStore = create<PluginState>((set) => ({
 
     const errors: PluginLoadError[] = [];
     const disabledPlugins = useSettingsStore.getState().disabledPlugins;
+    const enabledManifests = manifests.filter((manifest) => !disabledPlugins.includes(manifest.id));
 
-    for (const manifest of manifests) {
-      if (disabledPlugins.includes(manifest.id)) continue;
+    // Fetch every enabled plugin's entry code in parallel — toggling one plugin shouldn't cost
+    // an extra serial IPC round-trip for every *other* already-enabled plugin, which is what a
+    // sequential await-per-plugin loop did here before.
+    const fetched = await Promise.all(
+      enabledManifests.map(async (manifest) => {
+        try {
+          const code = await invoke<string>("read_plugin_entry", {
+            path: `${manifest.dir}/${manifest.entry}`,
+          });
+          return { manifest, code, error: null as string | null };
+        } catch (error) {
+          return { manifest, code: null as string | null, error: String(error) };
+        }
+      }),
+    );
+
+    for (const { manifest, code, error: fetchError } of fetched) {
+      if (fetchError !== null || code === null) {
+        errors.push({ pluginId: manifest.id, message: fetchError ?? "Could not read plugin entry" });
+        continue;
+      }
 
       try {
-        const code = await invoke<string>("read_plugin_entry", {
-          path: `${manifest.dir}/${manifest.entry}`,
-        });
         const api = createPluginApi(manifest, {
           registerSidebarPanel: (pluginId, panel) => {
             set((state) => ({ panels: [...state.panels, { ...panel, pluginId }] }));

@@ -69,8 +69,13 @@ api.registerSidebarPanel({
     const currentPath = api.getCurrentPath?.();
     if (currentPath) refresh(currentPath);
 
+    // Debounced: without this, quickly navigating through several folders (arrow keys,
+    // double-click chains) would fire a `git status` + `git log` subprocess pair for every
+    // folder passed through, not just the one the user lands on.
+    let debounceTimer = null;
     const unsubscribe = api.onFolderChange?.((path) => {
-      refresh(path);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => refresh(path), 300);
     });
 
     container.appendChild(repoLabel);
@@ -81,6 +86,7 @@ api.registerSidebarPanel({
     container.appendChild(logList);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       unsubscribe?.();
     };
   },
