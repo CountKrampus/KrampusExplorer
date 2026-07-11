@@ -1,0 +1,8 @@
+{
+  "id": "mtg-collection-manager",
+  "name": "MTG Collection Manager",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar"],
+  "entry": "frontend/index.js"
+}

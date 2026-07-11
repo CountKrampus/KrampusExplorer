@@ -1,0 +1,8 @@
+{
+  "id": "run-command",
+  "name": "Run Command",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "nav.read", "system.exec"],
+  "entry": "frontend/index.js"
+}
