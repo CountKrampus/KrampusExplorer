@@ -34,3 +34,23 @@ pub fn create_folder(parent_path: String, name: String) -> Result<String, String
 pub fn create_file(parent_path: String, name: String) -> Result<String, String> {
     explorer_filesystem::create_file(&parent_path, &name)
 }
+
+#[tauri::command]
+pub fn copy_entry(
+    source: String,
+    dest_dir: String,
+    dest_name: Option<String>,
+    overwrite: bool,
+) -> Result<String, String> {
+    explorer_filesystem::copy_entry(&source, &dest_dir, dest_name.as_deref(), overwrite)
+}
+
+#[tauri::command]
+pub fn move_entry(
+    source: String,
+    dest_dir: String,
+    dest_name: Option<String>,
+    overwrite: bool,
+) -> Result<String, String> {
+    explorer_filesystem::move_entry(&source, &dest_dir, dest_name.as_deref(), overwrite)
+}
