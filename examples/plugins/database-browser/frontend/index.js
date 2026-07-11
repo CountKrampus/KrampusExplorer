@@ -6,6 +6,31 @@
 // permission for (registerSidebarPanel: "ui.sidebar", getSelectedPath: "nav.read",
 // listSqliteTables/querySqliteTable: "db.sqlite", listMongoDatabases/listMongoCollections/
 // queryMongoCollection: "db.mongo").
+//
+// Saved connections (SQLite paths and MongoDB URIs) are kept in localStorage — no backend
+// permission needed, same as the MTG Collection Manager plugin's approach.
+
+const STORAGE_KEY = "krampus-db-browser-connections";
+const MAX_SAVED = 10;
+
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return { sqlite: parsed.sqlite ?? [], mongo: parsed.mongo ?? [] };
+  } catch {
+    return { sqlite: [], mongo: [] };
+  }
+}
+
+function saveSaved(saved) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+}
+
+function remember(list, value) {
+  const next = [value, ...list.filter((item) => item !== value)];
+  return next.slice(0, MAX_SAVED);
+}
 
 api.registerSidebarPanel({
   id: "database-browser",
@@ -16,6 +41,8 @@ api.registerSidebarPanel({
     container.style.flexDirection = "column";
     container.style.gap = "8px";
     container.style.fontSize = "12px";
+
+    let saved = loadSaved();
 
     const modeRow = document.createElement("div");
     modeRow.style.display = "flex";
@@ -40,6 +67,48 @@ api.registerSidebarPanel({
     modeRow.appendChild(sqliteRadio);
     modeRow.appendChild(mongoRadio);
 
+    function savedRow(list, onPick, onForget) {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "6px";
+
+      const select = document.createElement("select");
+      select.style.flex = "1";
+      select.style.padding = "4px 6px";
+
+      function render() {
+        select.innerHTML = "";
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = list.length > 0 ? "Saved connections..." : "No saved connections yet";
+        select.appendChild(placeholder);
+        for (const item of list) {
+          const option = document.createElement("option");
+          option.value = item;
+          option.textContent = item;
+          select.appendChild(option);
+        }
+      }
+      render();
+
+      select.addEventListener("change", () => {
+        if (select.value) onPick(select.value);
+      });
+
+      const forgetBtn = document.createElement("button");
+      forgetBtn.textContent = "Forget";
+      forgetBtn.style.cursor = "pointer";
+      forgetBtn.addEventListener("click", () => {
+        if (!select.value) return;
+        onForget(select.value);
+        render();
+      });
+
+      row.appendChild(select);
+      row.appendChild(forgetBtn);
+      return { row, refresh: render };
+    }
+
     // --- SQLite controls ---
     const sqlitePanel = document.createElement("div");
     sqlitePanel.style.display = "flex";
@@ -52,6 +121,17 @@ api.registerSidebarPanel({
     sqlitePathInput.value = api.getSelectedPath?.() ?? "";
     sqlitePathInput.style.padding = "4px 6px";
 
+    const sqliteSavedRow = savedRow(
+      saved.sqlite,
+      (value) => {
+        sqlitePathInput.value = value;
+      },
+      (value) => {
+        saved.sqlite = saved.sqlite.filter((item) => item !== value);
+        saveSaved(saved);
+      },
+    );
+
     const sqliteLoadBtn = document.createElement("button");
     sqliteLoadBtn.textContent = "List Tables";
     sqliteLoadBtn.style.cursor = "pointer";
@@ -63,6 +143,7 @@ api.registerSidebarPanel({
     sqliteQueryBtn.textContent = "Load Rows";
     sqliteQueryBtn.style.cursor = "pointer";
 
+    sqlitePanel.appendChild(sqliteSavedRow.row);
     sqlitePanel.appendChild(sqlitePathInput);
     sqlitePanel.appendChild(sqliteLoadBtn);
     sqlitePanel.appendChild(sqliteTableSelect);
@@ -78,6 +159,17 @@ api.registerSidebarPanel({
     mongoUriInput.type = "text";
     mongoUriInput.placeholder = "mongodb://localhost:27017";
     mongoUriInput.style.padding = "4px 6px";
+
+    const mongoSavedRow = savedRow(
+      saved.mongo,
+      (value) => {
+        mongoUriInput.value = value;
+      },
+      (value) => {
+        saved.mongo = saved.mongo.filter((item) => item !== value);
+        saveSaved(saved);
+      },
+    );
 
     const mongoConnectBtn = document.createElement("button");
     mongoConnectBtn.textContent = "List Databases";
@@ -97,6 +189,7 @@ api.registerSidebarPanel({
     mongoQueryBtn.textContent = "Load Documents";
     mongoQueryBtn.style.cursor = "pointer";
 
+    mongoPanel.appendChild(mongoSavedRow.row);
     mongoPanel.appendChild(mongoUriInput);
     mongoPanel.appendChild(mongoConnectBtn);
     mongoPanel.appendChild(mongoDbSelect);
@@ -151,6 +244,9 @@ api.registerSidebarPanel({
           sqliteTableSelect.appendChild(option);
         }
         setStatus(`Found ${tables.length} table(s).`, false);
+        saved.sqlite = remember(saved.sqlite, dbPath);
+        saveSaved(saved);
+        sqliteSavedRow.refresh();
       } catch (error) {
         setStatus(String(error), true);
       }
@@ -182,6 +278,9 @@ api.registerSidebarPanel({
           mongoDbSelect.appendChild(option);
         }
         setStatus(`Found ${databases.length} database(s).`, false);
+        saved.mongo = remember(saved.mongo, uri);
+        saveSaved(saved);
+        mongoSavedRow.refresh();
       } catch (error) {
         setStatus(String(error), true);
       }

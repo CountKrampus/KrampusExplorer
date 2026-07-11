@@ -15,6 +15,15 @@ Sidebar panel for browsing SQLite files and MongoDB servers, with a mode toggle 
 3. Click "List Collections", pick one.
 4. Click "Load Documents" to view up to 20 documents as JSON.
 
+## Saved connections
+
+Each mode has its own "Saved connections" dropdown. Successfully listing tables (SQLite) or
+databases (MongoDB) remembers that path/URI — up to 10 most recent, newest first — so you can
+pick it again next time instead of retyping it. Select "Forget" with an entry chosen to remove
+it. Saved connections are stored in `localStorage`, local to this machine/profile — MongoDB URIs
+containing credentials are stored as plain text, same as anywhere else you'd paste one on this
+machine.
+
 ## Permissions
 
 - `ui.sidebar` — registers the panel.
