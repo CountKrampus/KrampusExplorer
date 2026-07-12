@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
+import { useExplorerStore } from "../stores/useExplorerStore";
 import { useSearchStore } from "../stores/useSearchStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { usePluginStore } from "../stores/usePluginStore";
@@ -10,7 +10,30 @@ import { uniqueName } from "../utils/uniqueName";
 import "./Toolbar.css";
 
 function Toolbar() {
-  const activeTab = useActiveTab();
+  // Individual primitive selectors (not the whole tab object) so this only re-renders when one
+  // of these specific derived values actually changes — none of them depend on `selectedPath` or
+  // `entries`, so a plain selection click no longer re-renders the toolbar.
+  const hasActiveTab = useExplorerStore((state) => state.tabs.some((tab) => tab.id === state.activeTabId));
+  const canGoBack = useExplorerStore((state) => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    return !!tab && tab.historyIndex > 0;
+  });
+  const canGoForward = useExplorerStore((state) => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    return !!tab && tab.historyIndex < tab.history.length - 1;
+  });
+  const canGoUp = useExplorerStore((state) => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    return !!tab && !tab.loading && tab.parent !== null;
+  });
+  const tabBusy = useExplorerStore((state) => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    return !tab || tab.loading || !!tab.error;
+  });
+  const currentPath = useExplorerStore((state) => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    return tab ? tab.history[tab.historyIndex] : "";
+  });
   const back = useExplorerStore((state) => state.back);
   const forward = useExplorerStore((state) => state.forward);
   const up = useExplorerStore((state) => state.up);
@@ -28,16 +51,13 @@ function Toolbar() {
   const [creating, setCreating] = useState(false);
   const [pasting, setPasting] = useState(false);
 
-  const canGoBack = !!activeTab && activeTab.historyIndex > 0;
-  const canGoForward = !!activeTab && activeTab.historyIndex < activeTab.history.length - 1;
-  const canGoUp = !!activeTab && !activeTab.loading && activeTab.parent !== null;
-  const canCreate = !!activeTab && !activeTab.loading && !activeTab.error && !creating;
-  const canPaste = !!activeTab && !activeTab.loading && !activeTab.error && !!clipboard && !pasting;
+  const canCreate = hasActiveTab && !tabBusy && !creating;
+  const canPaste = hasActiveTab && !tabBusy && !!clipboard && !pasting;
 
   async function paste() {
-    if (!activeTab || !clipboard || pasting) return;
+    if (!hasActiveTab || !clipboard || pasting) return;
     setPasting(true);
-    const destDir = activeTab.history[activeTab.historyIndex];
+    const destDir = currentPath;
     try {
       await performTransfer(clipboard.path, destDir, clipboard.mode === "cut" ? "move" : "copy");
     } finally {
@@ -46,10 +66,11 @@ function Toolbar() {
   }
 
   async function createNew(kind: "folder" | "file") {
-    if (!activeTab || creating) return;
+    const tab = useExplorerStore.getState().tabs.find((t) => t.id === useExplorerStore.getState().activeTabId);
+    if (!tab || creating) return;
     setCreating(true);
-    const parentPath = activeTab.history[activeTab.historyIndex];
-    const existingNames = new Set(activeTab.entries.map((entry) => entry.name));
+    const parentPath = tab.history[tab.historyIndex];
+    const existingNames = new Set(tab.entries.map((entry) => entry.name));
     const name = uniqueName(kind === "folder" ? "New folder" : "New file.txt", existingNames);
     const command = kind === "folder" ? "create_folder" : "create_file";
     try {
@@ -97,7 +118,7 @@ function Toolbar() {
         &#x1F4CB;
       </button>
       <button
-        disabled={!activeTab}
+        disabled={!hasActiveTab}
         onClick={() => setSearchActive(!searching)}
         aria-label="Search"
         aria-pressed={searching}
@@ -119,7 +140,7 @@ function Toolbar() {
           {button.label}
         </button>
       ))}
-      <span className="toolbar__path">{activeTab?.history[activeTab.historyIndex] ?? ""}</span>
+      <span className="toolbar__path">{currentPath}</span>
     </div>
   );
 }

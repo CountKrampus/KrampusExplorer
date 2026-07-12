@@ -1,9 +1,12 @@
-import { useActiveTab } from "../stores/useExplorerStore";
+import { useExplorerStore } from "../stores/useExplorerStore";
 import "./StatusBar.css";
 
 function StatusBar() {
-  const activeTab = useActiveTab();
-  const itemCount = activeTab?.entries.length ?? 0;
+  // A primitive selector (not the whole tab object) so this only re-renders when the item count
+  // actually changes, not on every selection click or unrelated tab field update.
+  const itemCount = useExplorerStore(
+    (state) => state.tabs.find((tab) => tab.id === state.activeTabId)?.entries.length ?? 0,
+  );
 
   return (
     <div className="status-bar">

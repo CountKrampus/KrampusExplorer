@@ -1,4 +1,4 @@
-import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
+import { useExplorerStore } from "../stores/useExplorerStore";
 import "./Breadcrumbs.css";
 
 interface Crumb {
@@ -31,11 +31,15 @@ export function splitPath(path: string): Crumb[] {
 }
 
 function Breadcrumbs() {
-  const activeTab = useActiveTab();
+  // A primitive (string) selector so this only re-renders when the current path actually
+  // changes, not on every selection click or unrelated tab field update.
+  const path = useExplorerStore((state) => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    return tab ? tab.history[tab.historyIndex] : null;
+  });
   const navigateTo = useExplorerStore((state) => state.navigateTo);
 
-  if (!activeTab) return null;
-  const path = activeTab.history[activeTab.historyIndex];
+  if (path === null) return null;
   const crumbs = splitPath(path);
 
   return (

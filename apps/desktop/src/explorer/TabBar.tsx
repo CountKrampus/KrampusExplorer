@@ -1,4 +1,5 @@
-import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
+import { useShallow } from "zustand/react/shallow";
+import { useExplorerStore } from "../stores/useExplorerStore";
 import "./TabBar.css";
 
 export function tabLabel(path: string): string {
@@ -6,10 +7,22 @@ export function tabLabel(path: string): string {
   return parts.length > 0 ? parts[parts.length - 1] : path;
 }
 
+interface TabSummary {
+  id: string;
+  label: string;
+}
+
 function TabBar() {
-  const tabs = useExplorerStore((state) => state.tabs);
+  // Projected to just {id, label} and shallow-compared, so this only re-renders when a tab is
+  // added/removed/renamed (its current path changes) — not on every selection click or
+  // unrelated per-tab field update (entries, selectedPath, loading, etc.), since those don't
+  // change what's rendered here.
+  const tabs = useExplorerStore(
+    useShallow((state): TabSummary[] =>
+      state.tabs.map((tab) => ({ id: tab.id, label: tabLabel(tab.history[tab.historyIndex]) })),
+    ),
+  );
   const activeTabId = useExplorerStore((state) => state.activeTabId);
-  const activeTab = useActiveTab();
   const setActiveTab = useExplorerStore((state) => state.setActiveTab);
   const closeTab = useExplorerStore((state) => state.closeTab);
   const newTab = useExplorerStore((state) => state.newTab);
@@ -36,42 +49,43 @@ function TabBar() {
 
   return (
     <div className="tab-bar" role="tablist">
-      {tabs.map((tab, index) => {
-        const label = tabLabel(tab.history[tab.historyIndex]);
-        return (
-          <div
-            key={tab.id}
-            id={`tab-bar__tab-${tab.id}`}
-            className={`tab-bar__tab ${tab.id === activeTabId ? "tab-bar__tab--active" : ""}`}
-            role="tab"
-            tabIndex={0}
-            aria-selected={tab.id === activeTabId}
-            title={label}
-            onClick={() => setActiveTab(tab.id)}
-            onKeyDown={(event) => handleTabKeyDown(event, index)}
-          >
-            <span className="tab-bar__label">{label}</span>
-            {tabs.length > 1 && (
-              <button
-                className="tab-bar__close"
-                aria-label="Close tab"
-                title="Close tab"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  closeTab(tab.id);
-                }}
-              >
-                &#x2715;
-              </button>
-            )}
-          </div>
-        );
-      })}
+      {tabs.map((tab, index) => (
+        <div
+          key={tab.id}
+          id={`tab-bar__tab-${tab.id}`}
+          className={`tab-bar__tab ${tab.id === activeTabId ? "tab-bar__tab--active" : ""}`}
+          role="tab"
+          tabIndex={0}
+          aria-selected={tab.id === activeTabId}
+          title={tab.label}
+          onClick={() => setActiveTab(tab.id)}
+          onKeyDown={(event) => handleTabKeyDown(event, index)}
+        >
+          <span className="tab-bar__label">{tab.label}</span>
+          {tabs.length > 1 && (
+            <button
+              className="tab-bar__close"
+              aria-label="Close tab"
+              title="Close tab"
+              onClick={(event) => {
+                event.stopPropagation();
+                closeTab(tab.id);
+              }}
+            >
+              &#x2715;
+            </button>
+          )}
+        </div>
+      ))}
       <button
         className="tab-bar__new"
         aria-label="New tab"
         title="New tab"
-        onClick={() => newTab(activeTab ? activeTab.history[activeTab.historyIndex] : "")}
+        onClick={() => {
+          const state = useExplorerStore.getState();
+          const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+          newTab(activeTab ? activeTab.history[activeTab.historyIndex] : "");
+        }}
       >
         +
       </button>

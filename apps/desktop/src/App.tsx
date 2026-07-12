@@ -10,7 +10,7 @@ import ConflictDialog from "./components/ConflictDialog";
 import TransferProgress from "./components/TransferProgress";
 import ToastContainer from "./components/ToastContainer";
 import SettingsPanel from "./settings/SettingsPanel";
-import { useActiveTab, useExplorerStore } from "./stores/useExplorerStore";
+import { useExplorerStore } from "./stores/useExplorerStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { usePluginStore } from "./stores/usePluginStore";
 import { useUpdateStore } from "./stores/useUpdateStore";
@@ -21,7 +21,14 @@ import "./styles/global.css";
 import "./App.css";
 
 function App() {
-  const tabs = useExplorerStore((state) => state.tabs);
+  // Primitive selectors (not the whole `tabs` array / active tab object) so App only re-renders
+  // when tab count or the active tab's current path actually changes — not on every selection
+  // click, which previously replaced the whole `tabs` array without changing either of these.
+  const tabCount = useExplorerStore((state) => state.tabs.length);
+  const activeTabPath = useExplorerStore((state) => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    return tab ? tab.history[tab.historyIndex] : null;
+  });
   const newTab = useExplorerStore((state) => state.newTab);
   const resolvedTheme = useResolvedTheme();
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
@@ -33,7 +40,6 @@ function App() {
   const lastLocation = useSettingsStore((state) => state.lastLocation);
   const setLastLocation = useSettingsStore((state) => state.setLastLocation);
   const accentColor = useSettingsStore((state) => state.accentColor);
-  const activeTab = useActiveTab();
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
@@ -58,7 +64,7 @@ function App() {
   }, [settingsLoaded, loadPlugins]);
 
   useEffect(() => {
-    if (tabs.length !== 0 || !settingsLoaded) return;
+    if (tabCount !== 0 || !settingsLoaded) return;
 
     let startPath: Promise<string>;
     if (startupMode === "custom" && startupCustomPath) {
@@ -78,12 +84,11 @@ function App() {
       .catch((error: string) => {
         setBootstrapError(String(error));
       });
-  }, [tabs.length, settingsLoaded, startupMode, startupCustomPath, lastLocation, newTab]);
+  }, [tabCount, settingsLoaded, startupMode, startupCustomPath, lastLocation, newTab]);
 
   useEffect(() => {
-    const currentPath = activeTab?.history[activeTab.historyIndex];
-    if (currentPath) setLastLocation(currentPath);
-  }, [activeTab?.history, activeTab?.historyIndex, setLastLocation]);
+    if (activeTabPath) setLastLocation(activeTabPath);
+  }, [activeTabPath, setLastLocation]);
 
   useTabFetcher();
 
@@ -95,7 +100,7 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (tabs.length === 0) {
+  if (tabCount === 0) {
     return (
       <div className="app">
         <TitleBar />
