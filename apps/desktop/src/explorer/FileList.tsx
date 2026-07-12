@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import { useSettingsStore, type SortDirection, type SortField } from "../stores/useSettingsStore";
@@ -63,6 +63,123 @@ interface ContextMenuState {
   y: number;
 }
 
+interface FileRowProps {
+  entry: EntryInfo;
+  index: number;
+  isSelected: boolean;
+  isDragOver: boolean;
+  isRenaming: boolean;
+  renameValue: string;
+  renameInputRef: React.RefObject<HTMLInputElement>;
+  registerRow: (path: string, el: HTMLTableRowElement | null) => void;
+  onSelect: (path: string) => void;
+  onNavigate: (path: string) => void;
+  onRowKeyDown: (event: React.KeyboardEvent, index: number) => void;
+  onContextMenu: (path: string, isDir: boolean, x: number, y: number) => void;
+  isDragSource: (path: string) => boolean;
+  onDragStart: (path: string) => void;
+  onDragEnd: () => void;
+  onDragEnter: (path: string) => void;
+  onDragLeave: (path: string) => void;
+  onDrop: (event: React.DragEvent, path: string) => void;
+  onRenameChange: (value: string) => void;
+  onRenameCommit: (path: string) => void;
+  onRenameCancel: () => void;
+  onRenameBlur: (path: string) => void;
+}
+
+/** Memoized so selecting/deselecting one row only re-renders the (at most two) rows whose
+ * `isSelected`/`isDragOver` actually flipped, instead of every row in the folder. All callback
+ * props are stable across selection clicks (see the `useCallback`s in FileList) so React.memo's
+ * shallow prop comparison actually holds. */
+const FileRow = memo(function FileRow({
+  entry,
+  index,
+  isSelected,
+  isDragOver,
+  isRenaming,
+  renameValue,
+  renameInputRef,
+  registerRow,
+  onSelect,
+  onNavigate,
+  onRowKeyDown,
+  onContextMenu,
+  isDragSource,
+  onDragStart,
+  onDragEnd,
+  onDragEnter,
+  onDragLeave,
+  onDrop,
+  onRenameChange,
+  onRenameCommit,
+  onRenameCancel,
+  onRenameBlur,
+}: FileRowProps) {
+  return (
+    <tr
+      ref={(el) => registerRow(entry.path, el)}
+      tabIndex={0}
+      className={[
+        "file-list__row",
+        isSelected ? "file-list__row--selected" : "",
+        isDragOver ? "file-list__row--drag-over" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      draggable
+      onClick={() => onSelect(entry.path)}
+      onDoubleClick={() => entry.isDir && onNavigate(entry.path)}
+      onKeyDown={(event) => onRowKeyDown(event, index)}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onContextMenu(entry.path, entry.isDir, event.clientX, event.clientY);
+      }}
+      onDragStart={(event) => {
+        onDragStart(entry.path);
+        event.dataTransfer.effectAllowed = "copyMove";
+        event.dataTransfer.setData("text/plain", entry.path);
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={(event) => {
+        if (!entry.isDir || isDragSource(entry.path)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = event.ctrlKey ? "copy" : "move";
+      }}
+      onDragEnter={(event) => {
+        if (!entry.isDir || isDragSource(entry.path)) return;
+        event.preventDefault();
+        onDragEnter(entry.path);
+      }}
+      onDragLeave={() => onDragLeave(entry.path)}
+      onDrop={(event) => entry.isDir && onDrop(event, entry.path)}
+    >
+      <td>
+        {entry.isDir ? "\u{1F4C1} " : "\u{1F4C4} "}
+        {isRenaming ? (
+          <input
+            ref={renameInputRef}
+            className="file-list__rename-input"
+            value={renameValue}
+            onClick={(event) => event.stopPropagation()}
+            onChange={(event) => onRenameChange(event.target.value)}
+            onBlur={() => onRenameBlur(entry.path)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onRenameCommit(entry.path);
+              if (event.key === "Escape") onRenameCancel();
+            }}
+          />
+        ) : (
+          entry.name
+        )}
+      </td>
+      <td>{formatSize(entry.size)}</td>
+      <td>{entry.isDir ? "File folder" : extensionOf(entry.name)}</td>
+      <td>{formatModified(entry.modified)}</td>
+    </tr>
+  );
+});
+
 function FileList() {
   const activeTab = useActiveTab();
   const navigateTo = useExplorerStore((state) => state.navigateTo);
@@ -86,6 +203,7 @@ function FileList() {
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
   const [pendingDeletePath, setPendingDeletePath] = useState<string | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const renameValueRef = useRef("");
   const draggingPathRef = useRef<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
   // Guards against a rename committing twice: pressing Enter unmounts the rename <input> on the
@@ -96,6 +214,145 @@ function FileList() {
 
   const selectedPath = activeTab?.selectedPath ?? null;
   const currentPath = activeTab?.history[activeTab.historyIndex] ?? null;
+  const entries = activeTab?.entries;
+
+  // Keyed on `entries` (not the whole tab object) so selecting an item — which only replaces
+  // `selectedPath` on the tab, not `entries` — doesn't force an O(n log n) re-sort on every click.
+  const sortedEntries = useMemo(
+    () => sortEntries(entries ?? [], sortField, sortDirection),
+    [entries, sortField, sortDirection],
+  );
+
+  const focusRow = useCallback((path: string) => {
+    rowRefs.current.get(path)?.focus();
+  }, []);
+
+  const handleRowKeyDown = useCallback(
+    (event: React.KeyboardEvent, index: number) => {
+      if (event.key === "ArrowDown" && index < sortedEntries.length - 1) {
+        event.preventDefault();
+        const next = sortedEntries[index + 1];
+        setSelected(next.path);
+        focusRow(next.path);
+      } else if (event.key === "ArrowUp" && index > 0) {
+        event.preventDefault();
+        const previous = sortedEntries[index - 1];
+        setSelected(previous.path);
+        focusRow(previous.path);
+      } else if (event.key === "Enter") {
+        const entry = sortedEntries[index];
+        if (entry.isDir) {
+          event.preventDefault();
+          navigateTo(entry.path);
+        }
+      }
+    },
+    [sortedEntries, setSelected, focusRow, navigateTo],
+  );
+
+  const registerRow = useCallback((path: string, el: HTMLTableRowElement | null) => {
+    if (el) rowRefs.current.set(path, el);
+    else rowRefs.current.delete(path);
+  }, []);
+
+  const isDragSource = useCallback((path: string) => draggingPathRef.current === path, []);
+
+  const onRowDragStart = useCallback((path: string) => {
+    draggingPathRef.current = path;
+  }, []);
+
+  const onRowDragEnd = useCallback(() => {
+    draggingPathRef.current = null;
+    setDragOverPath(null);
+  }, []);
+
+  const onRowDragEnter = useCallback((path: string) => {
+    setDragOverPath(path);
+  }, []);
+
+  const onRowDragLeave = useCallback((path: string) => {
+    setDragOverPath((current) => (current === path ? null : current));
+  }, []);
+
+  const onRowDrop = useCallback((event: React.DragEvent, destDir: string) => {
+    event.preventDefault();
+    setDragOverPath(null);
+    const sourcePath = draggingPathRef.current;
+    draggingPathRef.current = null;
+    if (!sourcePath || sourcePath === destDir) return;
+    void performTransfer(sourcePath, destDir, event.ctrlKey ? "copy" : "move");
+  }, []);
+
+  const onRowContextMenu = useCallback(
+    (path: string, isDir: boolean, x: number, y: number) => {
+      setSelected(path);
+      setMenu({ path, isDir, x, y });
+    },
+    [setSelected],
+  );
+
+  const beginRename = useCallback(
+    (path: string) => {
+      const entry = entries?.find((e) => e.path === path);
+      if (!entry) return;
+      setRenamingPath(path);
+      setRenameValue(entry.name);
+      renameValueRef.current = entry.name;
+      setMenu(null);
+    },
+    [entries],
+  );
+
+  const onRenameChange = useCallback((value: string) => {
+    renameValueRef.current = value;
+    setRenameValue(value);
+  }, []);
+
+  const commitRename = useCallback(
+    async (path: string) => {
+      if (commitInFlightRef.current) return;
+      commitInFlightRef.current = true;
+      setRenamingPath(null);
+      try {
+        const name = renameValueRef.current.trim();
+        const entry = entries?.find((e) => e.path === path);
+        if (!entry || !name || name === entry.name) return;
+        try {
+          const newPath = await invoke<string>("rename_entry", { path, newName: name });
+          setSelected(newPath);
+          refresh();
+        } catch (error) {
+          showToast(String(error));
+        }
+      } finally {
+        commitInFlightRef.current = false;
+      }
+    },
+    [entries, setSelected, refresh, showToast],
+  );
+
+  const handleRenameCommit = useCallback(
+    (path: string) => {
+      void commitRename(path);
+    },
+    [commitRename],
+  );
+
+  const cancelRename = useCallback(() => {
+    suppressNextBlurRef.current = true;
+    setRenamingPath(null);
+  }, []);
+
+  const onRenameBlur = useCallback(
+    (path: string) => {
+      if (suppressNextBlurRef.current) {
+        suppressNextBlurRef.current = false;
+        return;
+      }
+      void commitRename(path);
+    },
+    [commitRename],
+  );
 
   useEffect(() => {
     if (!menu) return;
@@ -140,44 +397,10 @@ function FileList() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPath, renamingPath, clipboard, currentPath]);
+  }, [selectedPath, renamingPath, clipboard, currentPath, beginRename]);
 
   if (!activeTab) return null;
   const tab = activeTab;
-  const sortedEntries = sortEntries(tab.entries, sortField, sortDirection);
-
-  function beginRename(path: string) {
-    const entry = tab.entries.find((e) => e.path === path);
-    if (!entry) return;
-    setRenamingPath(path);
-    setRenameValue(entry.name);
-    setMenu(null);
-  }
-
-  async function commitRename(path: string) {
-    if (commitInFlightRef.current) return;
-    commitInFlightRef.current = true;
-    setRenamingPath(null);
-    try {
-      const name = renameValue.trim();
-      const entry = tab.entries.find((e) => e.path === path);
-      if (!entry || !name || name === entry.name) return;
-      try {
-        const newPath = await invoke<string>("rename_entry", { path, newName: name });
-        setSelected(newPath);
-        refresh();
-      } catch (error) {
-        showToast(String(error));
-      }
-    } finally {
-      commitInFlightRef.current = false;
-    }
-  }
-
-  function cancelRename() {
-    suppressNextBlurRef.current = true;
-    setRenamingPath(null);
-  }
 
   async function handleDelete(path: string) {
     try {
@@ -189,54 +412,20 @@ function FileList() {
     }
   }
 
-  function focusRow(path: string) {
-    rowRefs.current.get(path)?.focus();
-  }
-
-  function handleRowKeyDown(event: React.KeyboardEvent, index: number) {
-    const entries = sortedEntries;
-    if (event.key === "ArrowDown" && index < entries.length - 1) {
-      event.preventDefault();
-      const next = entries[index + 1];
-      setSelected(next.path);
-      focusRow(next.path);
-    } else if (event.key === "ArrowUp" && index > 0) {
-      event.preventDefault();
-      const previous = entries[index - 1];
-      setSelected(previous.path);
-      focusRow(previous.path);
-    } else if (event.key === "Enter") {
-      const entry = entries[index];
-      if (entry.isDir) {
-        event.preventDefault();
-        navigateTo(entry.path);
-      }
-    }
-  }
-
-  function handleDrop(event: React.DragEvent, destDir: string) {
-    event.preventDefault();
-    setDragOverPath(null);
-    const sourcePath = draggingPathRef.current;
-    draggingPathRef.current = null;
-    if (!sourcePath || sourcePath === destDir) return;
-    void performTransfer(sourcePath, destDir, event.ctrlKey ? "copy" : "move");
-  }
-
-  if (activeTab.error) {
+  if (tab.error) {
     return (
       <div className="file-list-message file-list-message--error">
-        <p>{activeTab.error}</p>
+        <p>{tab.error}</p>
         <button onClick={refresh}>Retry</button>
       </div>
     );
   }
 
-  if (activeTab.loading) {
+  if (tab.loading) {
     return <div className="file-list-message">Loading…</div>;
   }
 
-  if (activeTab.entries.length === 0) {
+  if (tab.entries.length === 0) {
     return <div className="file-list-message">This folder is empty.</div>;
   }
 
@@ -290,80 +479,31 @@ function FileList() {
         </thead>
         <tbody>
           {sortedEntries.map((entry, index) => (
-            <tr
+            <FileRow
               key={entry.path}
-              ref={(el) => {
-                if (el) rowRefs.current.set(entry.path, el);
-                else rowRefs.current.delete(entry.path);
-              }}
-              tabIndex={0}
-              className={[
-                "file-list__row",
-                entry.path === selectedPath ? "file-list__row--selected" : "",
-                entry.path === dragOverPath ? "file-list__row--drag-over" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              draggable
-              onClick={() => setSelected(entry.path)}
-              onDoubleClick={() => entry.isDir && navigateTo(entry.path)}
-              onKeyDown={(event) => handleRowKeyDown(event, index)}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                setSelected(entry.path);
-                setMenu({ path: entry.path, isDir: entry.isDir, x: event.clientX, y: event.clientY });
-              }}
-              onDragStart={(event) => {
-                draggingPathRef.current = entry.path;
-                event.dataTransfer.effectAllowed = "copyMove";
-                event.dataTransfer.setData("text/plain", entry.path);
-              }}
-              onDragEnd={() => {
-                draggingPathRef.current = null;
-                setDragOverPath(null);
-              }}
-              onDragOver={(event) => {
-                if (!entry.isDir || draggingPathRef.current === entry.path) return;
-                event.preventDefault();
-                event.dataTransfer.dropEffect = event.ctrlKey ? "copy" : "move";
-              }}
-              onDragEnter={(event) => {
-                if (!entry.isDir || draggingPathRef.current === entry.path) return;
-                event.preventDefault();
-                setDragOverPath(entry.path);
-              }}
-              onDragLeave={() => setDragOverPath((current) => (current === entry.path ? null : current))}
-              onDrop={(event) => entry.isDir && handleDrop(event, entry.path)}
-            >
-              <td>
-                {entry.isDir ? "\u{1F4C1} " : "\u{1F4C4} "}
-                {renamingPath === entry.path ? (
-                  <input
-                    ref={renameInputRef}
-                    className="file-list__rename-input"
-                    value={renameValue}
-                    onClick={(event) => event.stopPropagation()}
-                    onChange={(event) => setRenameValue(event.target.value)}
-                    onBlur={() => {
-                      if (suppressNextBlurRef.current) {
-                        suppressNextBlurRef.current = false;
-                        return;
-                      }
-                      void commitRename(entry.path);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void commitRename(entry.path);
-                      if (event.key === "Escape") cancelRename();
-                    }}
-                  />
-                ) : (
-                  entry.name
-                )}
-              </td>
-              <td>{formatSize(entry.size)}</td>
-              <td>{entry.isDir ? "File folder" : extensionOf(entry.name)}</td>
-              <td>{formatModified(entry.modified)}</td>
-            </tr>
+              entry={entry}
+              index={index}
+              isSelected={entry.path === selectedPath}
+              isDragOver={entry.path === dragOverPath}
+              isRenaming={entry.path === renamingPath}
+              renameValue={entry.path === renamingPath ? renameValue : ""}
+              renameInputRef={renameInputRef}
+              registerRow={registerRow}
+              onSelect={setSelected}
+              onNavigate={navigateTo}
+              onRowKeyDown={handleRowKeyDown}
+              onContextMenu={onRowContextMenu}
+              isDragSource={isDragSource}
+              onDragStart={onRowDragStart}
+              onDragEnd={onRowDragEnd}
+              onDragEnter={onRowDragEnter}
+              onDragLeave={onRowDragLeave}
+              onDrop={onRowDrop}
+              onRenameChange={onRenameChange}
+              onRenameCommit={handleRenameCommit}
+              onRenameCancel={cancelRename}
+              onRenameBlur={onRenameBlur}
+            />
           ))}
         </tbody>
       </table>
