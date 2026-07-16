@@ -118,9 +118,37 @@ api.registerSidebarPanel({
 
     let entries = [];
     let currentResults = [];
+    // Row DOM nodes, keyed by path — built once per `buildRows` call (when the entry list itself
+    // changes: Load Files, or after Apply reloads from disk) and then only ever patched in place
+    // (text/color on existing cells) as the user types. The row count and order never change
+    // between keystrokes, only the computed new-name/collision values do, so there's no need to
+    // touch previewBody's DOM tree — let alone tear it down and rebuild it — on every keystroke.
+    let rowsByPath = new Map();
 
-    function renderPreview() {
+    function buildRows() {
       previewBody.innerHTML = "";
+      rowsByPath = new Map();
+      for (const entry of entries) {
+        const row = document.createElement("tr");
+
+        const oldCell = document.createElement("td");
+        oldCell.textContent = entry.name;
+        oldCell.style.padding = "2px 4px";
+        const arrowCell = document.createElement("td");
+        arrowCell.textContent = "→";
+        arrowCell.style.padding = "2px 4px";
+        const newCell = document.createElement("td");
+        newCell.style.padding = "2px 4px";
+
+        row.appendChild(oldCell);
+        row.appendChild(arrowCell);
+        row.appendChild(newCell);
+        previewBody.appendChild(row);
+        rowsByPath.set(entry.path, { row, newCell });
+      }
+    }
+
+    function updatePreview() {
       if (entries.length === 0) {
         applyBtn.disabled = true;
         return;
@@ -140,24 +168,10 @@ api.registerSidebarPanel({
       const changedCount = results.filter((r) => r.changed).length;
 
       for (const r of results) {
-        const row = document.createElement("tr");
-        if (r.collision) row.style.color = "var(--danger, #d33)";
-        else if (!r.changed) row.style.color = "var(--fg-muted)";
-
-        const oldCell = document.createElement("td");
-        oldCell.textContent = r.entry.name;
-        oldCell.style.padding = "2px 4px";
-        const arrowCell = document.createElement("td");
-        arrowCell.textContent = "→";
-        arrowCell.style.padding = "2px 4px";
-        const newCell = document.createElement("td");
-        newCell.textContent = r.newName;
-        newCell.style.padding = "2px 4px";
-
-        row.appendChild(oldCell);
-        row.appendChild(arrowCell);
-        row.appendChild(newCell);
-        previewBody.appendChild(row);
+        const refs = rowsByPath.get(r.entry.path);
+        if (!refs) continue;
+        refs.newCell.textContent = r.newName;
+        refs.row.style.color = r.collision ? "var(--danger, #d33)" : !r.changed ? "var(--fg-muted)" : "";
       }
 
       if (hasCollision) {
@@ -169,8 +183,16 @@ api.registerSidebarPanel({
       }
     }
 
-    [findInput, replaceInput].forEach((input) => input.addEventListener("input", renderPreview));
-    regexCheckbox.addEventListener("change", renderPreview);
+    // Debounced so a fast typist doesn't trigger a recompute (regex/replace over every entry)
+    // on every single keystroke — only once input pauses for 150ms.
+    let debounceTimer = null;
+    function scheduleUpdatePreview() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(updatePreview, 150);
+    }
+
+    [findInput, replaceInput].forEach((input) => input.addEventListener("input", scheduleUpdatePreview));
+    regexCheckbox.addEventListener("change", updatePreview);
 
     loadBtn.addEventListener("click", async () => {
       const root = rootInput.value.trim();
@@ -183,7 +205,8 @@ api.registerSidebarPanel({
       try {
         entries = (await api.listDirectory(root)).slice().sort((a, b) => a.name.localeCompare(b.name));
         setStatus(`${entries.length} item${entries.length === 1 ? "" : "s"} loaded`, false);
-        renderPreview();
+        buildRows();
+        updatePreview();
       } catch (error) {
         setStatus(String(error), true);
         entries = [];
@@ -221,7 +244,8 @@ api.registerSidebarPanel({
       }
       findInput.value = "";
       replaceInput.value = "";
-      renderPreview();
+      buildRows();
+      updatePreview();
     });
 
     const unsubscribe = api.onFolderChange?.((path) => {
@@ -237,6 +261,7 @@ api.registerSidebarPanel({
     container.appendChild(applyBtn);
 
     return () => {
+      clearTimeout(debounceTimer);
       unsubscribe?.();
     };
   },

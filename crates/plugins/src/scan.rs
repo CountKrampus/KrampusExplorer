@@ -68,7 +68,40 @@ fn walk(dir: &Path, results: &mut Vec<ScannedFile>) -> Result<(), String> {
 /// into memory first. A single unreadable path fails the whole batch — callers are expected to
 /// pass paths just returned by `scan_directory`, so a failure here usually means the file was
 /// deleted or became inaccessible between the scan and the hash pass.
+///
+/// Splits `paths` into contiguous chunks (one per available CPU core, capped at `paths.len()`)
+/// and hashes each chunk on its own thread — a duplicate-finder scan can have hundreds of
+/// same-size candidates to hash, and hashing is CPU-bound, so this uses more than one core
+/// instead of hashing everything on the calling thread. Order is preserved: chunk boundaries
+/// don't reorder paths, and chunks are reassembled in their original order.
 pub fn hash_files(paths: &[String]) -> Result<Vec<FileHash>, String> {
+    let thread_count = std::thread::available_parallelism()
+        .map(std::num::NonZero::get)
+        .unwrap_or(1)
+        .min(paths.len());
+    if thread_count <= 1 {
+        return hash_files_sequential(paths);
+    }
+
+    let chunk_size = paths.len().div_ceil(thread_count);
+    std::thread::scope(|scope| {
+        let handles: Vec<_> = paths
+            .chunks(chunk_size)
+            .map(|chunk| scope.spawn(move || hash_files_sequential(chunk)))
+            .collect();
+
+        let mut results = Vec::with_capacity(paths.len());
+        for handle in handles {
+            let chunk_result = handle
+                .join()
+                .map_err(|_| "A hashing thread panicked".to_string())?;
+            results.extend(chunk_result?);
+        }
+        Ok(results)
+    })
+}
+
+fn hash_files_sequential(paths: &[String]) -> Result<Vec<FileHash>, String> {
     paths
         .iter()
         .map(|path| {
@@ -186,6 +219,28 @@ mod tests {
     fn hash_files_errors_on_missing_file() {
         let result = hash_files(&["this-file-should-not-exist-12345.txt".to_string()]);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn hash_files_preserves_order_and_correctness_across_multiple_threads() {
+        let dir = tempdir().unwrap();
+        let mut paths = Vec::new();
+        for i in 0..8 {
+            let path = dir.path().join(format!("f{i}.txt"));
+            fs::write(&path, format!("content-{i}").as_bytes()).unwrap();
+            paths.push(path.to_string_lossy().to_string());
+        }
+
+        let hashes = hash_files(&paths).unwrap();
+
+        assert_eq!(hashes.len(), paths.len());
+        for (hash, path) in hashes.iter().zip(paths.iter()) {
+            assert_eq!(&hash.path, path);
+        }
+        // Every file has distinct content, so every hash should be distinct too — this would
+        // catch a bug where chunking accidentally hashed the wrong slice or duplicated work.
+        let unique: std::collections::HashSet<_> = hashes.iter().map(|h| h.hash.clone()).collect();
+        assert_eq!(unique.len(), hashes.len());
     }
 
     #[test]
