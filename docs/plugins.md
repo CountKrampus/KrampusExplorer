@@ -11,7 +11,9 @@ Plugins live in a directory scanned on every app launch:
 
 Each plugin is a subdirectory containing a `manifest.json` and an entry JS file. Drop a plugin
 folder in, restart the app — it'll show up in Settings → Plugins (or a load error will, if
-something's wrong).
+something's wrong). Or use Settings → Plugins → "Browse Marketplace" (see below) instead of
+copying files manually — no restart needed either way, since plugin loading always re-scans the
+directory from scratch.
 
 See `examples/plugins/hello-sidebar/` for a working minimal example, or the following for
 fuller examples covering most of the permissions below:
@@ -233,6 +235,42 @@ api.registerCommand({
 Adds an entry to the command palette (`Ctrl+K`/`Cmd+K`), alongside the app's built-in commands
 and any other plugins' commands. There's no arguments passed to `run` — a command is a fixed
 action, not something that takes input at invocation time.
+
+## Plugin marketplace
+
+Settings → Plugins → "Browse Marketplace" lists every plugin in [`marketplace.json`](../marketplace.json)
+(repo root) that isn't already installed, with an "Install" button per entry. This is core-app
+UI, not a plugin — it isn't gated behind any permission, since the core app already has
+unrestricted filesystem access.
+
+**How it works:** the app fetches `marketplace.json` and each installed plugin's `manifest.json`
++ entry file straight from `raw.githubusercontent.com` on the `master` branch (always the latest
+commit, not pinned to any release tag), then calls a new `install_plugin` Tauri command that
+writes those two files into a new subdirectory of the plugins directory named after the plugin's
+`id`. Existing files at that path are overwritten. After a successful install, plugin loading
+re-runs immediately — no app restart needed, same as toggling a plugin on/off in the list above.
+
+**`marketplace.json` format:**
+
+```json
+[{ "id": "archive-manager", "name": "Archive Manager", "description": "..." }]
+```
+
+`id` must match the plugin's actual folder name under `examples/plugins/` (that's how its
+`manifest.json`/entry file URLs get constructed) and the `id` field inside its own
+`manifest.json`.
+
+**Trust model:** every plugin currently listed is first-party content living in this same repo,
+so installing one just copies files you could otherwise get from `examples/plugins/` yourself.
+There's no signature verification or sandboxing beyond what's already true of any manually
+installed plugin (see "How entry files execute" below) — if `marketplace.json` or a plugin's
+own directory ever pointed at a third-party or attacker-controlled source, installing from it
+would run that code with the same trust as any other plugin. Don't add third-party sources to
+`marketplace.json` without the same scrutiny you'd apply to installing a plugin manually.
+
+A plugin listed here may need backend capabilities newer than whatever app version is actually
+running (the same core-app-vs-plugin gap `docs/releasing.md` describes for the example plugins in
+general) — the marketplace UI has no way to detect or warn about that mismatch.
 
 ## How entry files execute — and why this matters
 

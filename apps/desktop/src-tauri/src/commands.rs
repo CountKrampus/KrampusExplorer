@@ -1,7 +1,7 @@
 use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo};
 use explorer_plugins::{
-    CommandOutput, FileHash, GitCommit, GitFileStatus, MultiHash, PluginManifest, ScannedFile,
-    TableData,
+    CommandOutput, FileHash, GitCommit, GitFileStatus, MultiHash, PluginFile, PluginManifest,
+    ScannedFile, TableData,
 };
 use explorer_preview::TextPreview;
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
@@ -171,6 +171,11 @@ pub fn list_plugins() -> Vec<PluginManifest> {
 #[tauri::command]
 pub fn read_plugin_entry(path: String) -> Result<String, String> {
     explorer_plugins::read_entry(&path)
+}
+
+#[tauri::command]
+pub fn install_plugin(plugin_id: String, files: Vec<PluginFile>) -> Result<(), String> {
+    explorer_plugins::install_plugin(&plugin_id, &files, None)
 }
 
 #[tauri::command]

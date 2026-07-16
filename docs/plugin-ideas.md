@@ -136,7 +136,8 @@ Could become one of Krampus Explorer's signature plugin suites, alongside the ex
 
 ## Fun & community
 
-- **Plugin Marketplace** — discover/install plugins from within the app
+- ~~**Plugin Marketplace**~~ — built as a core feature (Settings → Plugins → "Browse
+  Marketplace"). See `docs/plugins.md`.
 - **Theme Marketplace** — share/install community themes
 - **Icon Pack Manager** — swap file-type icon sets
 - **Startup Dashboard** — a landing view with recent folders/favorites/stats on launch

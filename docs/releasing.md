@@ -101,3 +101,12 @@ Commit the regenerated `package-lock.json` before re-tagging.
 `App.tsx` silently calls `checkForUpdates()` — no toast or dialog. Settings → Updates shows the
 current version, lets the user manually check, and (if an update is available) download and
 install it, which relaunches the app via `@tauri-apps/plugin-process`.
+
+**What auto-update does and doesn't ship:** a release only contains the core app binary — the
+Rust backend and bundled React frontend. Plugins (`examples/plugins/`) are never part of the
+installer; they only ever reach a user's machine via manual copy into
+`%APPDATA%\Krampus Explorer\plugins\` or the in-app marketplace (`docs/plugins.md`'s "Plugin
+marketplace" section), neither of which auto-update touches. A plugin using a backend capability
+newer than the installed app version (e.g. a new `fs.*` permission) won't work until the app
+itself is updated — plugin JS hot-reloads on every launch, but the backend commands it calls
+don't exist until the binary containing them is installed.

@@ -37,8 +37,8 @@ See [Plan.md](Plan.md) for the full vision, architecture, and roadmap.
 | [checksum-verifier](examples/plugins/checksum-verifier) | Computes MD5/SHA-1/SHA-256 and checks against a pasted checksum |
 | [batch-rename](examples/plugins/batch-rename) | Find/Replace renaming for a folder's contents, with live preview |
 
-Copy a plugin's folder into your plugins directory (`%APPDATA%\Krampus Explorer\plugins\`) and
-restart the app to try one.
+Install one via Settings → Plugins → "Browse Marketplace" (no restart needed), or copy a
+plugin's folder into your plugins directory (`%APPDATA%\Krampus Explorer\plugins\`) manually.
 
 ## Keyboard shortcuts
 

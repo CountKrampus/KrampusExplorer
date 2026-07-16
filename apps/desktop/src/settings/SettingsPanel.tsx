@@ -5,6 +5,7 @@ import { useSettingsStore, type IconSize, type StartupMode, type Theme } from ".
 import { usePluginStore } from "../stores/usePluginStore";
 import { useUpdateStore } from "../stores/useUpdateStore";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import PluginMarketplace from "./PluginMarketplace";
 import "./SettingsPanel.css";
 
 const SHORTCUTS: [string, string][] = [
@@ -47,6 +48,7 @@ function SettingsPanelBody() {
   const checkForUpdates = useUpdateStore((state) => state.checkForUpdates);
   const installUpdate = useUpdateStore((state) => state.installUpdate);
   const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [marketplaceOpen, setMarketplaceOpen] = useState(false);
 
   useEffect(() => {
     getVersion()
@@ -203,6 +205,14 @@ function SettingsPanelBody() {
               ))}
             </ul>
           )}
+          <button
+            type="button"
+            className="settings-panel__check-updates"
+            onClick={() => setMarketplaceOpen((open) => !open)}
+          >
+            {marketplaceOpen ? "Hide Marketplace" : "Browse Marketplace"}
+          </button>
+          {marketplaceOpen && <PluginMarketplace />}
         </section>
 
         <section className="settings-panel__section">

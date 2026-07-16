@@ -36,6 +36,7 @@ pub fn run() {
             commands::save_settings,
             commands::list_plugins,
             commands::read_plugin_entry,
+            commands::install_plugin,
             commands::create_zip_archive,
             commands::extract_zip_archive,
             commands::scan_directory,

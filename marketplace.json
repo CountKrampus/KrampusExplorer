@@ -1,0 +1,47 @@
+[
+  {
+    "id": "archive-manager",
+    "name": "Archive Manager",
+    "description": "Zip/unzip files and folders from the sidebar, plus context menu entries."
+  },
+  {
+    "id": "database-browser",
+    "name": "Database Browser",
+    "description": "Browse SQLite files or a MongoDB server, with a mode toggle."
+  },
+  {
+    "id": "git-integration",
+    "name": "Git Integration",
+    "description": "Shows git status/git log for the folder you're browsing."
+  },
+  {
+    "id": "mtg-collection-manager",
+    "name": "MTG Collection Manager",
+    "description": "Tracks a Magic: The Gathering card collection via the Scryfall API."
+  },
+  {
+    "id": "run-command",
+    "name": "Run Command",
+    "description": "Runs a single shell command in the current folder and shows its output."
+  },
+  {
+    "id": "duplicate-finder",
+    "name": "Duplicate File Finder",
+    "description": "Finds duplicate files by content hash, grouped with wasted-space totals."
+  },
+  {
+    "id": "disk-usage-visualizer",
+    "name": "Disk Usage Visualizer",
+    "description": "Recursive size breakdown of a folder's immediate children."
+  },
+  {
+    "id": "checksum-verifier",
+    "name": "Checksum Verifier",
+    "description": "Computes MD5/SHA-1/SHA-256 and checks against a pasted checksum."
+  },
+  {
+    "id": "batch-rename",
+    "name": "Batch Rename",
+    "description": "Find/Replace renaming for a folder's contents, with live preview."
+  }
+]
