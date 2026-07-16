@@ -24,3 +24,4 @@ explorer-search = { path = "../../../crates/search" }
 explorer-preview = { path = "../../../crates/preview" }
 explorer-plugins = { path = "../../../crates/plugins" }
 explorer-settings = { path = "../../../crates/settings" }
+explorer-terminal = { path = "../../../crates/terminal" }

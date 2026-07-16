@@ -2412,6 +2412,7 @@ dependencies = [
  "explorer-preview",
  "explorer-search",
  "explorer-settings",
+ "explorer-terminal",
  "serde",
  "serde_json",
  "tauri",

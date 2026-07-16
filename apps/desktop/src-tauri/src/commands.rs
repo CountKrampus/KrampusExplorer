@@ -6,8 +6,10 @@ use explorer_plugins::{
 use explorer_preview::TextPreview;
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
 use explorer_settings::Settings;
+use explorer_terminal::TerminalManager;
 use serde::Serialize;
 use tauri::ipc::Channel;
+use tauri::Manager;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -254,4 +256,99 @@ pub fn git_log(repo_path: String, limit: u32) -> Result<Vec<GitCommit>, String> 
 #[tauri::command]
 pub fn run_command(command: String, cwd: String) -> Result<CommandOutput, String> {
     explorer_plugins::run_command(&command, &cwd)
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalChunk {
+    pub data: String,
+}
+
+#[tauri::command]
+pub fn terminal_spawn(
+    manager: tauri::State<TerminalManager>,
+    cwd: Option<String>,
+    on_output: Channel<TerminalChunk>,
+) -> Result<String, String> {
+    manager.spawn(cwd.as_deref(), move |bytes| {
+        let _ = on_output.send(TerminalChunk { data: String::from_utf8_lossy(&bytes).to_string() });
+    })
+}
+
+#[tauri::command]
+pub fn terminal_write(
+    manager: tauri::State<TerminalManager>,
+    session_id: String,
+    data: String,
+) -> Result<(), String> {
+    manager.write(&session_id, &data)
+}
+
+#[tauri::command]
+pub fn terminal_resize(
+    manager: tauri::State<TerminalManager>,
+    session_id: String,
+    cols: u16,
+    rows: u16,
+) -> Result<(), String> {
+    manager.resize(&session_id, cols, rows)
+}
+
+#[tauri::command]
+pub fn terminal_close(
+    manager: tauri::State<TerminalManager>,
+    session_id: String,
+) -> Result<(), String> {
+    manager.close(&session_id)
+}
+
+/// Creates the detached terminal window if it doesn't exist yet, else focuses the existing one.
+/// `cwd` (the folder open in the explorer when the plugin's "Open Terminal" button was clicked)
+/// is passed through the window URL so the terminal's first tab opens there.
+#[tauri::command]
+pub fn open_terminal_window(app: tauri::AppHandle, cwd: Option<String>) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("terminal") {
+        window.set_focus().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    let mut url = "index.html?window=terminal".to_string();
+    if let Some(cwd) = cwd {
+        url.push_str("&cwd=");
+        url.push_str(&urlencoding_encode(&cwd));
+    }
+
+    let window = tauri::WebviewWindowBuilder::new(&app, "terminal", tauri::WebviewUrl::App(url.into()))
+        .title("Krampus Explorer — Terminal")
+        .inner_size(900.0, 600.0)
+        .min_inner_size(400.0, 300.0)
+        .decorations(false)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let app_handle = app.clone();
+    window.on_window_event(move |event| {
+        if matches!(event, tauri::WindowEvent::Destroyed) {
+            if let Some(manager) = app_handle.try_state::<TerminalManager>() {
+                manager.close_all();
+            }
+        }
+    });
+
+    Ok(())
+}
+
+/// Minimal percent-encoding for the one thing a folder path needs escaped in a URL query
+/// string: no external crate pulled in just for this.
+fn urlencoding_encode(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char)
+            }
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
 }
