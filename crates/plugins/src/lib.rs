@@ -5,12 +5,14 @@ mod database;
 mod exec;
 mod git;
 mod mongo;
+mod scan;
 
 pub use archive::{create_zip_archive, extract_zip_archive};
 pub use database::{list_sqlite_tables, query_sqlite_table, TableData};
 pub use exec::{run_command, CommandOutput};
 pub use git::{git_log, git_status, GitCommit, GitFileStatus};
 pub use mongo::{list_mongo_collections, list_mongo_databases, query_mongo_collection};
+pub use scan::{hash_file_all, hash_files, scan_directory, FileHash, MultiHash, ScannedFile};
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};

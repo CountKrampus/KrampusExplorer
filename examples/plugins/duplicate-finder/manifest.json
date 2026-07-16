@@ -1,0 +1,8 @@
+{
+  "id": "duplicate-finder",
+  "name": "Duplicate File Finder",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "nav.read", "clipboard.write", "fs.scan"],
+  "entry": "frontend/index.js"
+}

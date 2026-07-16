@@ -23,7 +23,7 @@ See [Plan.md](Plan.md) for the full vision, architecture, and roadmap.
 
 ## Included example plugins
 
-`examples/plugins/` has five working plugins demonstrating the SDK:
+`examples/plugins/` has eight working plugins demonstrating the SDK:
 
 | Plugin | What it does |
 |---|---|
@@ -32,6 +32,9 @@ See [Plan.md](Plan.md) for the full vision, architecture, and roadmap.
 | [git-integration](examples/plugins/git-integration) | Shows `git status`/`git log` for the folder you're browsing |
 | [mtg-collection-manager](examples/plugins/mtg-collection-manager) | Tracks a Magic: The Gathering card collection via the Scryfall API |
 | [run-command](examples/plugins/run-command) | Runs a single shell command in the current folder and shows its output |
+| [duplicate-finder](examples/plugins/duplicate-finder) | Finds duplicate files by content hash, grouped with wasted-space totals |
+| [disk-usage-visualizer](examples/plugins/disk-usage-visualizer) | Recursive size breakdown of a folder's immediate children |
+| [checksum-verifier](examples/plugins/checksum-verifier) | Computes MD5/SHA-1/SHA-256 and checks against a pasted checksum |
 
 Copy a plugin's folder into your plugins directory (`%APPDATA%\Krampus Explorer\plugins\`) and
 restart the app to try one.

@@ -74,6 +74,22 @@ export interface SqliteTable {
   rows: (string | null)[][];
 }
 
+export interface ScannedFile {
+  path: string;
+  size: number;
+}
+
+export interface FileHash {
+  path: string;
+  hash: string;
+}
+
+export interface MultiHash {
+  md5: string;
+  sha1: string;
+  sha256: string;
+}
+
 export interface PluginApi {
   /** Present only if the plugin's manifest declares the "ui.sidebar" permission. */
   registerSidebarPanel?: (panel: PluginSidebarPanel) => void;
@@ -147,4 +163,15 @@ export interface PluginApi {
    * `command` through the OS shell in `cwd` with the app's own permissions — no sandboxing,
    * no confirmation prompt. Only grant this permission to plugins you trust completely. */
   runCommand?: (cwd: string, command: string) => Promise<CommandOutput>;
+  /** Present only if the plugin's manifest declares the "fs.scan" permission. Recursively lists
+   * every file (not directory) under `root` with its size. Symlinks are not followed. */
+  scanDirectory?: (root: string) => Promise<ScannedFile[]>;
+  /** Present only if the plugin's manifest declares the "fs.scan" permission. Hashes each of
+   * `paths` with BLAKE3, streaming file contents rather than reading fully into memory. A
+   * single unreadable path fails the whole batch. */
+  hashFiles?: (paths: string[]) => Promise<FileHash[]>;
+  /** Present only if the plugin's manifest declares the "fs.scan" permission. Computes MD5,
+   * SHA-1, and SHA-256 of a single file in one streaming pass — the algorithms a download
+   * page's published checksum is actually likely to use, unlike `hashFiles`' BLAKE3. */
+  hashFileAll?: (path: string) => Promise<MultiHash>;
 }

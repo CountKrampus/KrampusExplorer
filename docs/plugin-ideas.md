@@ -6,8 +6,9 @@ from.
 
 ## File organization & cleanup
 
-- **Duplicate File Finder** — hash-based scan across folders, one-click cleanup
-- **Disk Usage Visualizer** — treemap/sunburst of folder sizes (WinDirStat-style)
+- ~~**Duplicate File Finder**~~ — built, see `examples/plugins/duplicate-finder/`
+- ~~**Disk Usage Visualizer**~~ — built (single-level breakdown, not a full treemap), see
+  `examples/plugins/disk-usage-visualizer/`
 - **Folder Size Analyzer** — quick per-folder size totals, lighter weight than the treemap
 - **Batch Rename** — regex/pattern rules with a live preview before committing
 - **File Tagging/Labels** — cross-folder tags independent of location, searchable
@@ -90,7 +91,7 @@ from.
 
 ## Security & integrity
 
-- **Checksum/Hash Verifier** — generate/compare MD5/SHA1/SHA256, useful for downloads
+- ~~**Checksum/Hash Verifier**~~ — built, see `examples/plugins/checksum-verifier/`
 - **Encrypted Vault** — password-protect a folder, transparent encrypt/decrypt
 - **VirusTotal Lookup** — check a file's hash against VirusTotal
 - **Malware Hash Database** — offline known-malware hash check, no network required

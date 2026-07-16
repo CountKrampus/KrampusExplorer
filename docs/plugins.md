@@ -22,6 +22,9 @@ fuller examples covering most of the permissions below:
 - `examples/plugins/database-browser/` — SQLite and MongoDB browsing via `db.sqlite`/`db.mongo`
 - `examples/plugins/git-integration/` — `git status`/`git log` via `git.read`
 - `examples/plugins/run-command/` — scoped-down "run one command" via `system.exec`
+- `examples/plugins/duplicate-finder/` — recursive scan + content hashing via `fs.scan`
+- `examples/plugins/disk-usage-visualizer/` — recursive scan via `fs.scan`
+- `examples/plugins/checksum-verifier/` — MD5/SHA-1/SHA-256 via `fs.scan`
 
 ## manifest.json
 
@@ -71,6 +74,7 @@ call, because ungranted methods simply don't exist on the object.
 | `db.mongo` | `api.listMongoDatabases(uri)`, `api.listMongoCollections(uri, dbName)`, `api.queryMongoCollection(uri, dbName, collection, limit)` |
 | `git.read` | `api.gitStatus(repoPath)`, `api.gitLog(repoPath, limit)` |
 | `system.exec` | `api.runCommand(cwd, command)` |
+| `fs.scan` | `api.scanDirectory(root)`, `api.hashFiles(paths)`, `api.hashFileAll(path)` |
 
 ### `registerSidebarPanel`
 
@@ -187,6 +191,17 @@ Both require a `git` executable on `PATH` and fail if `repoPath` isn't inside a 
   — runs `command` through the OS shell (`cmd /C` on Windows, `sh -c` elsewhere) in `cwd`, with
   the app's own OS permissions. **No sandboxing, no confirmation prompt.** Only grant this
   permission to plugins you trust completely.
+
+### `fs.scan` methods
+
+- `scanDirectory(root: string): Promise<{ path: string; size: number }[]>` — recursively lists
+  every file (not directory) under `root` with its size. Symlinks are not followed.
+- `hashFiles(paths: string[]): Promise<{ path: string; hash: string }[]>` — hashes each path with
+  BLAKE3, streaming file contents rather than reading fully into memory. A single unreadable path
+  fails the whole batch.
+- `hashFileAll(path: string): Promise<{ md5: string; sha1: string; sha256: string }>` — computes
+  MD5, SHA-1, and SHA-256 of a single file in one streaming pass. Useful for matching a checksum
+  published on a download page (which won't be BLAKE3).
 
 ## How entry files execute — and why this matters
 

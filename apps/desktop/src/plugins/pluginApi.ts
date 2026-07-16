@@ -1,13 +1,16 @@
 import type {
   CommandOutput,
+  FileHash,
   GitCommit,
   GitFileStatus,
+  MultiHash,
   PluginApi,
   PluginContextMenuItem,
   PluginFileHandler,
   PluginManifest,
   PluginSidebarPanel,
   PluginToolbarButton,
+  ScannedFile,
   SqliteTable,
 } from "../types/plugin";
 
@@ -42,6 +45,9 @@ export interface PluginApiHandlers {
   gitStatus: (repoPath: string) => Promise<GitFileStatus[]>;
   gitLog: (repoPath: string, limit: number) => Promise<GitCommit[]>;
   runCommand: (cwd: string, command: string) => Promise<CommandOutput>;
+  scanDirectory: (root: string) => Promise<ScannedFile[]>;
+  hashFiles: (paths: string[]) => Promise<FileHash[]>;
+  hashFileAll: (path: string) => Promise<MultiHash>;
 }
 
 /**
@@ -99,6 +105,11 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
   }
   if (has("system.exec")) {
     api.runCommand = (cwd, command) => handlers.runCommand(cwd, command);
+  }
+  if (has("fs.scan")) {
+    api.scanDirectory = (root) => handlers.scanDirectory(root);
+    api.hashFiles = (paths) => handlers.hashFiles(paths);
+    api.hashFileAll = (path) => handlers.hashFileAll(path);
   }
 
   return api;

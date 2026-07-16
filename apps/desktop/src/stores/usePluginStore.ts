@@ -6,13 +6,16 @@ import { useExplorerStore } from "./useExplorerStore";
 import { useSettingsStore } from "./useSettingsStore";
 import type {
   CommandOutput,
+  FileHash,
   GitCommit,
   GitFileStatus,
+  MultiHash,
   PluginContextMenuItem,
   PluginFileHandler,
   PluginManifest,
   PluginSidebarPanel,
   PluginToolbarButton,
+  ScannedFile,
   SqliteTable,
 } from "../types/plugin";
 
@@ -174,6 +177,9 @@ export const usePluginStore = create<PluginState>((set) => ({
           gitStatus: (repoPath) => invoke<GitFileStatus[]>("git_status", { repoPath }),
           gitLog: (repoPath, limit) => invoke<GitCommit[]>("git_log", { repoPath, limit }),
           runCommand: (cwd, command) => invoke<CommandOutput>("run_command", { command, cwd }),
+          scanDirectory: (root) => invoke<ScannedFile[]>("scan_directory", { root }),
+          hashFiles: (paths) => invoke<FileHash[]>("hash_files", { paths }),
+          hashFileAll: (path) => invoke<MultiHash>("hash_file_all", { path }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.

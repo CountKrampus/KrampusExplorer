@@ -1,5 +1,8 @@
 use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo};
-use explorer_plugins::{CommandOutput, GitCommit, GitFileStatus, PluginManifest, TableData};
+use explorer_plugins::{
+    CommandOutput, FileHash, GitCommit, GitFileStatus, MultiHash, PluginManifest, ScannedFile,
+    TableData,
+};
 use explorer_preview::TextPreview;
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
 use explorer_settings::Settings;
@@ -181,6 +184,21 @@ pub fn create_zip_archive(
 #[tauri::command]
 pub fn extract_zip_archive(zip_path: String, dest_dir: String) -> Result<String, String> {
     explorer_plugins::extract_zip_archive(&zip_path, &dest_dir)
+}
+
+#[tauri::command]
+pub fn scan_directory(root: String) -> Result<Vec<ScannedFile>, String> {
+    explorer_plugins::scan_directory(&root)
+}
+
+#[tauri::command]
+pub fn hash_files(paths: Vec<String>) -> Result<Vec<FileHash>, String> {
+    explorer_plugins::hash_files(&paths)
+}
+
+#[tauri::command]
+pub fn hash_file_all(path: String) -> Result<MultiHash, String> {
+    explorer_plugins::hash_file_all(&path)
 }
 
 #[tauri::command]

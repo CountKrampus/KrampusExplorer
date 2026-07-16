@@ -37,6 +37,9 @@ function handlers(): PluginApiHandlers {
     gitStatus: vi.fn().mockResolvedValue([]),
     gitLog: vi.fn().mockResolvedValue([]),
     runCommand: vi.fn().mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 }),
+    scanDirectory: vi.fn().mockResolvedValue([]),
+    hashFiles: vi.fn().mockResolvedValue([]),
+    hashFileAll: vi.fn().mockResolvedValue({ md5: "", sha1: "", sha256: "" }),
   };
 }
 
@@ -54,6 +57,7 @@ describe("createPluginApi", () => {
     "db.mongo",
     "git.read",
     "system.exec",
+    "fs.scan",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -76,6 +80,9 @@ describe("createPluginApi", () => {
     "gitStatus",
     "gitLog",
     "runCommand",
+    "scanDirectory",
+    "hashFiles",
+    "hashFileAll",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -106,6 +113,7 @@ describe("createPluginApi", () => {
     ["db.mongo", ["listMongoDatabases", "listMongoCollections", "queryMongoCollection"]],
     ["git.read", ["gitStatus", "gitLog"]],
     ["system.exec", ["runCommand"]],
+    ["fs.scan", ["scanDirectory", "hashFiles", "hashFileAll"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 

@@ -1,0 +1,8 @@
+{
+  "id": "disk-usage-visualizer",
+  "name": "Disk Usage Visualizer",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "nav.read", "fs.scan"],
+  "entry": "frontend/index.js"
+}
