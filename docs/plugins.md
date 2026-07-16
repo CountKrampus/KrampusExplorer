@@ -206,8 +206,13 @@ Both require a `git` executable on `PATH` and fail if `repoPath` isn't inside a 
 - `scanDirectory(root: string): Promise<{ path: string; size: number }[]>` — recursively lists
   every file (not directory) under `root` with its size. Symlinks are not followed.
 - `hashFiles(paths: string[]): Promise<{ path: string; hash: string }[]>` — hashes each path with
-  BLAKE3, streaming file contents rather than reading fully into memory. A single unreadable path
-  fails the whole batch.
+  BLAKE3, streaming file contents rather than reading fully into memory. A path that can't be
+  opened or read (deleted, locked, permission-denied) is silently skipped rather than failing the
+  whole batch — the returned array may be shorter than `paths`. Callers hashing a large number of
+  candidates (a whole-drive scan can turn up hundreds of thousands of same-size files) should
+  chunk the call rather than passing everything in one array — a single very large result array
+  is a real crash risk over IPC, not just a slow one. See `examples/plugins/duplicate-finder/` for
+  the pattern (a sane candidate-count cap, plus hashing in fixed-size chunks with progress).
 - `hashFileAll(path: string): Promise<{ md5: string; sha1: string; sha256: string }>` — computes
   MD5, SHA-1, and SHA-256 of a single file in one streaming pass. Useful for matching a checksum
   published on a download page (which won't be BLAKE3).

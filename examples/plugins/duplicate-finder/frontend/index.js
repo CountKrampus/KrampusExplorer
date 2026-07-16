@@ -13,6 +13,14 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
+// Scanning a whole system drive can turn up hundreds of thousands of same-size candidates (every
+// zero-byte file on the drive is "the same size" as every other one, for instance). Hashing that
+// many in a single api.hashFiles call means a single IPC round-trip carrying a result array with
+// hundreds of thousands of {path, hash} entries — a real crash risk, not just a slow one. Refusing
+// past a sane cap, and chunking everything under it, keeps every IPC message a bounded size.
+const MAX_CANDIDATES = 20000;
+const HASH_CHUNK_SIZE = 1000;
+
 api.registerSidebarPanel({
   id: "duplicate-finder",
   title: "Duplicate Finder",
@@ -147,15 +155,30 @@ api.registerSidebarPanel({
           return;
         }
 
-        setStatus(`Hashing ${candidates.length} candidate file${candidates.length === 1 ? "" : "s"}…`, false);
-        const sizeByPath = new Map(candidates.map((f) => [f.path, f.size]));
-        const hashes = await api.hashFiles(candidates.map((f) => f.path));
+        if (candidates.length > MAX_CANDIDATES) {
+          setStatus(
+            `Found ${candidates.length} same-size candidates — that's too many to hash in one folder ` +
+              `(limit ${MAX_CANDIDATES}). Try scanning a narrower folder instead of a whole drive.`,
+            true,
+          );
+          return;
+        }
 
+        const sizeByPath = new Map(candidates.map((f) => [f.path, f.size]));
+        const candidatePaths = candidates.map((f) => f.path);
         const byHash = new Map();
-        for (const { path, hash } of hashes) {
-          const bucket = byHash.get(hash);
-          if (bucket) bucket.push(path);
-          else byHash.set(hash, [path]);
+        for (let i = 0; i < candidatePaths.length; i += HASH_CHUNK_SIZE) {
+          const chunk = candidatePaths.slice(i, i + HASH_CHUNK_SIZE);
+          setStatus(
+            `Hashing ${Math.min(i + HASH_CHUNK_SIZE, candidatePaths.length)} of ${candidatePaths.length} candidate files…`,
+            false,
+          );
+          const hashes = await api.hashFiles(chunk);
+          for (const { path, hash } of hashes) {
+            const bucket = byHash.get(hash);
+            if (bucket) bucket.push(path);
+            else byHash.set(hash, [path]);
+          }
         }
 
         const groups = [];

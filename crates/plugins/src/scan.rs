@@ -71,9 +71,10 @@ fn walk(dir: &Path, results: &mut Vec<ScannedFile>) {
 }
 
 /// Hashes each of `paths` with BLAKE3, streaming the file contents rather than reading it fully
-/// into memory first. A single unreadable path fails the whole batch — callers are expected to
-/// pass paths just returned by `scan_directory`, so a failure here usually means the file was
-/// deleted or became inaccessible between the scan and the hash pass.
+/// into memory first. A path that can't be opened or read (deleted, locked by another process, or
+/// became inaccessible between the scan and the hash pass — all common when hashing hundreds of
+/// thousands of candidates from a whole-drive scan) is skipped rather than failing the entire
+/// batch; the caller gets every file that *could* be hashed instead of nothing.
 ///
 /// Splits `paths` into contiguous chunks (one per available CPU core, capped at `paths.len()`)
 /// and hashes each chunk on its own thread — a duplicate-finder scan can have hundreds of
@@ -84,9 +85,9 @@ pub fn hash_files(paths: &[String]) -> Result<Vec<FileHash>, String> {
     let thread_count = std::thread::available_parallelism()
         .map(std::num::NonZero::get)
         .unwrap_or(1)
-        .min(paths.len());
+        .min(paths.len().max(1));
     if thread_count <= 1 {
-        return hash_files_sequential(paths);
+        return Ok(hash_files_sequential(paths));
     }
 
     let chunk_size = paths.len().div_ceil(thread_count);
@@ -101,22 +102,20 @@ pub fn hash_files(paths: &[String]) -> Result<Vec<FileHash>, String> {
             let chunk_result = handle
                 .join()
                 .map_err(|_| "A hashing thread panicked".to_string())?;
-            results.extend(chunk_result?);
+            results.extend(chunk_result);
         }
         Ok(results)
     })
 }
 
-fn hash_files_sequential(paths: &[String]) -> Result<Vec<FileHash>, String> {
+fn hash_files_sequential(paths: &[String]) -> Vec<FileHash> {
     paths
         .iter()
-        .map(|path| {
-            let mut file = File::open(path).map_err(|e| format!("Could not open '{path}': {e}"))?;
+        .filter_map(|path| {
+            let mut file = File::open(path).ok()?;
             let mut hasher = blake3::Hasher::new();
-            hasher
-                .update_reader(&mut file)
-                .map_err(|e| format!("Could not read '{path}': {e}"))?;
-            Ok(FileHash {
+            hasher.update_reader(&mut file).ok()?;
+            Some(FileHash {
                 path: path.clone(),
                 hash: hasher.finalize().to_hex().to_string(),
             })
@@ -222,9 +221,19 @@ mod tests {
     }
 
     #[test]
-    fn hash_files_errors_on_missing_file() {
-        let result = hash_files(&["this-file-should-not-exist-12345.txt".to_string()]);
-        assert!(result.is_err());
+    fn hash_files_skips_a_missing_file_instead_of_failing_the_whole_batch() {
+        let dir = tempdir().unwrap();
+        let ok_path = dir.path().join("ok.txt");
+        fs::write(&ok_path, b"hello").unwrap();
+
+        let hashes = hash_files(&[
+            "this-file-should-not-exist-12345.txt".to_string(),
+            ok_path.to_string_lossy().to_string(),
+        ])
+        .unwrap();
+
+        assert_eq!(hashes.len(), 1);
+        assert_eq!(hashes[0].path, ok_path.to_string_lossy().to_string());
     }
 
     #[test]
