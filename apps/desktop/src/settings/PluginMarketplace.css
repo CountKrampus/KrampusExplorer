@@ -63,3 +63,15 @@
   cursor: default;
   opacity: 0.6;
 }
+
+.plugin-marketplace__badge {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.plugin-marketplace__badge--installed {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}

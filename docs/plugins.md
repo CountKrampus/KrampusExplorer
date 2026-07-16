@@ -255,9 +255,9 @@ action, not something that takes input at invocation time.
 ## Plugin marketplace
 
 Settings → Plugins → "Browse Marketplace" lists every plugin in [`marketplace.json`](../marketplace.json)
-(repo root) that isn't already installed, with an "Install" button per entry. This is core-app
-UI, not a plugin — it isn't gated behind any permission, since the core app already has
-unrestricted filesystem access.
+(repo root), each tagged with an "Installed" badge or an "Install" button depending on whether its
+id is already present in the plugins directory. This is core-app UI, not a plugin — it isn't gated
+behind any permission, since the core app already has unrestricted filesystem access.
 
 **How it works:** the app fetches `marketplace.json` and each installed plugin's `manifest.json`
 + entry file straight from `raw.githubusercontent.com` on the `master` branch (always the latest

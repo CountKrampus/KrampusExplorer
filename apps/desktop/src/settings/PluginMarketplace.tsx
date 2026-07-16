@@ -23,14 +23,10 @@ interface FetchedManifest {
   entry?: string;
 }
 
-/** Excludes anything already present locally — installedIds comes from the plugins directory
- * scan (usePluginStore.manifests), not the marketplace itself. */
-export function filterUninstalled(
-  entries: MarketplaceEntry[],
-  installedIds: string[],
-): MarketplaceEntry[] {
-  const installed = new Set(installedIds);
-  return entries.filter((entry) => !installed.has(entry.id));
+/** installedIds comes from the plugins directory scan (usePluginStore.manifests), not the
+ * marketplace itself — a plugin is "installed" when its id shows up there. */
+export function isInstalled(entryId: string, installedIds: string[]): boolean {
+  return installedIds.includes(entryId);
 }
 
 function PluginMarketplace() {
@@ -115,32 +111,39 @@ function PluginMarketplace() {
     return <p className="plugin-marketplace__empty">Loading marketplace…</p>;
   }
 
-  const uninstalled = filterUninstalled(entries, installedIds);
-
   return (
     <div className="plugin-marketplace">
       {installError && (
         <p className="plugin-marketplace__empty plugin-marketplace__empty--error">{installError}</p>
       )}
-      {uninstalled.length === 0 ? (
-        <p className="plugin-marketplace__empty">Every marketplace plugin is already installed.</p>
+      {entries.length === 0 ? (
+        <p className="plugin-marketplace__empty">No plugins are listed in the marketplace yet.</p>
       ) : (
         <ul className="plugin-marketplace__list">
-          {uninstalled.map((entry) => (
-            <li key={entry.id}>
-              <div className="plugin-marketplace__info">
-                <span className="plugin-marketplace__name">{entry.name}</span>
-                <span className="plugin-marketplace__description">{entry.description}</span>
-              </div>
-              <button
-                type="button"
-                disabled={installingId === entry.id}
-                onClick={() => void install(entry)}
-              >
-                {installingId === entry.id ? "Installing…" : "Install"}
-              </button>
-            </li>
-          ))}
+          {entries.map((entry) => {
+            const installed = isInstalled(entry.id, installedIds);
+            return (
+              <li key={entry.id}>
+                <div className="plugin-marketplace__info">
+                  <span className="plugin-marketplace__name">{entry.name}</span>
+                  <span className="plugin-marketplace__description">{entry.description}</span>
+                </div>
+                {installed ? (
+                  <span className="plugin-marketplace__badge plugin-marketplace__badge--installed">
+                    Installed
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={installingId === entry.id}
+                    onClick={() => void install(entry)}
+                  >
+                    {installingId === entry.id ? "Installing…" : "Install"}
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

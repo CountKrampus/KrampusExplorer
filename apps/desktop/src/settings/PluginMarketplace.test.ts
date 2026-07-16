@@ -1,28 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { filterUninstalled, type MarketplaceEntry } from "./PluginMarketplace";
+import { isInstalled } from "./PluginMarketplace";
 
-function entry(id: string): MarketplaceEntry {
-  return { id, name: id, description: "" };
-}
-
-describe("filterUninstalled", () => {
-  it("excludes entries whose id is already installed", () => {
-    const entries = [entry("a"), entry("b"), entry("c")];
-
-    const result = filterUninstalled(entries, ["b"]);
-
-    expect(result.map((e) => e.id)).toEqual(["a", "c"]);
+describe("isInstalled", () => {
+  it("is true when the entry's id is in the installed list", () => {
+    expect(isInstalled("b", ["a", "b", "c"])).toBe(true);
   });
 
-  it("returns every entry when nothing is installed", () => {
-    const entries = [entry("a"), entry("b")];
-
-    expect(filterUninstalled(entries, [])).toEqual(entries);
+  it("is false when the entry's id is not in the installed list", () => {
+    expect(isInstalled("d", ["a", "b", "c"])).toBe(false);
   });
 
-  it("returns nothing when everything is already installed", () => {
-    const entries = [entry("a"), entry("b")];
-
-    expect(filterUninstalled(entries, ["a", "b"])).toEqual([]);
+  it("is false when nothing is installed", () => {
+    expect(isInstalled("a", [])).toBe(false);
   });
 });
