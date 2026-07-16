@@ -45,15 +45,19 @@ plugin's folder into your plugins directory (`%APPDATA%\Krampus Explorer\plugins
 | Shortcut | Action |
 |---|---|
 | `Ctrl+K` | Open the command palette |
-| `F2` | Rename selected item |
-| `Delete` | Move selected item to Recycle Bin |
-| `Ctrl+C` | Copy selected item |
-| `Ctrl+X` | Cut selected item |
-| `Ctrl+V` | Paste |
+| `Click` | Select a single item |
+| `Ctrl+Click` | Toggle one item in/out of the selection |
+| `Shift+Click` | Select a contiguous range from the last-clicked item |
+| `Ctrl+A` | Select every item in the current folder |
+| `Escape` | Clear the selection (or close the open dialog) |
+| `F2` | Rename the selected item (only when exactly one item is selected) |
+| `Delete` | Move the selected item(s) to Recycle Bin |
+| `Ctrl+C` | Copy the selected item(s) |
+| `Ctrl+X` | Cut the selected item(s) |
+| `Ctrl+V` | Paste — transfers every clipboard item one at a time |
 | `Ctrl+drag` | Copy instead of move when dropping |
-| `Arrow Up`/`Down` | Move selection in the file list |
+| `Arrow Up`/`Down` | Move a single selection in the file list |
 | `Enter` | Open the selected folder |
-| `Escape` | Close the open dialog |
 
 ## Stack
 

@@ -103,6 +103,118 @@ describe("useExplorerStore", () => {
     expect(useExplorerStore.getState().tabs[0].history).toEqual(["D:\\"]);
   });
 
+  it("setSelected replaces the whole selection with a single item", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+    store.selectAll(["C:\\a.txt", "C:\\b.txt", "C:\\c.txt"]);
+
+    store.setSelected("C:\\b.txt");
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual(["C:\\b.txt"]);
+    expect(tab.selectedPath).toBe("C:\\b.txt");
+    expect(tab.selectionAnchor).toBe("C:\\b.txt");
+  });
+
+  it("setSelected(null) clears the selection", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+    store.setSelected("C:\\a.txt");
+
+    store.setSelected(null);
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual([]);
+    expect(tab.selectedPath).toBeNull();
+  });
+
+  it("toggleSelected adds a path not yet selected, keeping the anchor on it", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+    store.setSelected("C:\\a.txt");
+
+    store.toggleSelected("C:\\b.txt");
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual(["C:\\a.txt", "C:\\b.txt"]);
+    expect(tab.selectedPath).toBe("C:\\b.txt");
+    expect(tab.selectionAnchor).toBe("C:\\b.txt");
+  });
+
+  it("toggleSelected removes a path already selected", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+    store.selectAll(["C:\\a.txt", "C:\\b.txt", "C:\\c.txt"]);
+
+    store.toggleSelected("C:\\b.txt");
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual(["C:\\a.txt", "C:\\c.txt"]);
+    expect(tab.selectedPath).toBe("C:\\c.txt");
+  });
+
+  it("toggleSelected off the last remaining item clears selectedPath", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+    store.setSelected("C:\\a.txt");
+
+    store.toggleSelected("C:\\a.txt");
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual([]);
+    expect(tab.selectedPath).toBeNull();
+  });
+
+  it("selectRange replaces the selection without moving the anchor", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+    store.setSelected("C:\\a.txt"); // anchor = a.txt
+
+    store.selectRange(["C:\\a.txt", "C:\\b.txt", "C:\\c.txt"]);
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual(["C:\\a.txt", "C:\\b.txt", "C:\\c.txt"]);
+    expect(tab.selectedPath).toBe("C:\\c.txt");
+    expect(tab.selectionAnchor).toBe("C:\\a.txt");
+  });
+
+  it("selectAll sets the anchor to the first path and primary to the last", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+
+    store.selectAll(["C:\\a.txt", "C:\\b.txt", "C:\\c.txt"]);
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual(["C:\\a.txt", "C:\\b.txt", "C:\\c.txt"]);
+    expect(tab.selectionAnchor).toBe("C:\\a.txt");
+    expect(tab.selectedPath).toBe("C:\\c.txt");
+  });
+
+  it("clearSelection empties the selection and anchor", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+    store.selectAll(["C:\\a.txt", "C:\\b.txt"]);
+
+    store.clearSelection();
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual([]);
+    expect(tab.selectedPath).toBeNull();
+    expect(tab.selectionAnchor).toBeNull();
+  });
+
+  it("navigateTo clears the selection", () => {
+    useExplorerStore.getState().newTab("C:\\");
+    const store = useExplorerStore.getState();
+    store.selectAll(["C:\\a.txt", "C:\\b.txt"]);
+
+    store.navigateTo("C:\\Users");
+
+    const tab = useExplorerStore.getState().tabs[0];
+    expect(tab.selectedPaths).toEqual([]);
+    expect(tab.selectionAnchor).toBeNull();
+  });
+
   it("closeTab activates the adjacent tab, not always the last tab", () => {
     useExplorerStore.getState().newTab("C:\\");
     useExplorerStore.getState().newTab("D:\\");

@@ -151,8 +151,11 @@ the built-in text preview uses); longer files are truncated, not rejected.
 
 - `getCurrentPath(): string | null` — snapshot of the active tab's current folder.
 - `getSelectedPath(): string | null` — snapshot of the active tab's currently selected file/folder.
+  The core file list supports multi-select (Ctrl+click, Shift+click, Ctrl+A), but this only ever
+  reports the "primary" item — the most recently interacted-with one — not the whole selection.
+  There's no plugin-facing API for the full multi-selection yet.
 - `onSelectionChange(callback: (path: string | null) => void): () => void` — fires whenever the
-  selection changes; returns an unsubscribe function.
+  primary selection changes; returns an unsubscribe function.
 - `onFolderChange(callback: (path: string) => void): () => void` — fires whenever the active tab
   navigates to a different folder; returns an unsubscribe function.
 

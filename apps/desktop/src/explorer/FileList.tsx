@@ -4,7 +4,7 @@ import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import { useSettingsStore, type SortDirection, type SortField } from "../stores/useSettingsStore";
 import { usePluginStore } from "../stores/usePluginStore";
 import { useToastStore } from "../stores/useToastStore";
-import { performTransfer } from "../services/fileTransfer";
+import { performTransfer, performTransferBatch } from "../services/fileTransfer";
 import ConfirmDialog from "../components/ConfirmDialog";
 import type { EntryInfo } from "../types/filesystem";
 import "./FileList.css";
@@ -56,6 +56,10 @@ export function sortEntries(entries: EntryInfo[], field: SortField, direction: S
   });
 }
 
+// A single stable reference (not a fresh `[]` literal per render) so the `selectedSet` useMemo
+// below doesn't get a "changed" dependency every render just because there's no active tab.
+const EMPTY_SELECTION: string[] = [];
+
 interface ContextMenuState {
   path: string;
   isDir: boolean;
@@ -72,7 +76,7 @@ interface FileRowProps {
   renameValue: string;
   renameInputRef: React.RefObject<HTMLInputElement>;
   registerRow: (path: string, el: HTMLTableRowElement | null) => void;
-  onSelect: (path: string) => void;
+  onRowClick: (path: string, index: number, event: React.MouseEvent) => void;
   onNavigate: (path: string) => void;
   onRowKeyDown: (event: React.KeyboardEvent, index: number) => void;
   onContextMenu: (path: string, isDir: boolean, x: number, y: number) => void;
@@ -101,7 +105,7 @@ const FileRow = memo(function FileRow({
   renameValue,
   renameInputRef,
   registerRow,
-  onSelect,
+  onRowClick,
   onNavigate,
   onRowKeyDown,
   onContextMenu,
@@ -128,7 +132,7 @@ const FileRow = memo(function FileRow({
         .filter(Boolean)
         .join(" ")}
       draggable
-      onClick={() => onSelect(entry.path)}
+      onClick={(event) => onRowClick(entry.path, index, event)}
       onDoubleClick={() => entry.isDir && onNavigate(entry.path)}
       onKeyDown={(event) => onRowKeyDown(event, index)}
       onContextMenu={(event) => {
@@ -185,6 +189,10 @@ function FileList() {
   const navigateTo = useExplorerStore((state) => state.navigateTo);
   const refresh = useExplorerStore((state) => state.refresh);
   const setSelected = useExplorerStore((state) => state.setSelected);
+  const toggleSelected = useExplorerStore((state) => state.toggleSelected);
+  const selectRange = useExplorerStore((state) => state.selectRange);
+  const selectAll = useExplorerStore((state) => state.selectAll);
+  const clearSelection = useExplorerStore((state) => state.clearSelection);
   const clipboard = useExplorerStore((state) => state.clipboard);
   const setClipboard = useExplorerStore((state) => state.setClipboard);
   const iconSize = useSettingsStore((state) => state.iconSize);
@@ -201,7 +209,7 @@ function FileList() {
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
-  const [pendingDeletePath, setPendingDeletePath] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const renameValueRef = useRef("");
   const draggingPathRef = useRef<string | null>(null);
@@ -213,8 +221,11 @@ function FileList() {
   const suppressNextBlurRef = useRef(false);
 
   const selectedPath = activeTab?.selectedPath ?? null;
+  const selectedPaths = activeTab?.selectedPaths ?? EMPTY_SELECTION;
   const currentPath = activeTab?.history[activeTab.historyIndex] ?? null;
   const entries = activeTab?.entries;
+
+  const selectedSet = useMemo(() => new Set(selectedPaths), [selectedPaths]);
 
   // Keyed on `entries` (not the whole tab object) so selecting an item — which only replaces
   // `selectedPath` on the tab, not `entries` — doesn't force an O(n log n) re-sort on every click.
@@ -250,6 +261,32 @@ function FileList() {
     [sortedEntries, setSelected, focusRow, navigateTo],
   );
 
+  // Reads the anchor fresh via getState() instead of taking it as a reactive dependency — the
+  // anchor changes on every plain/Ctrl+click, and this callback is passed uniformly to every
+  // row, so depending on it reactively would give every row a "changed" onRowClick prop on every
+  // click and defeat FileRow's memoization (see the comment on FileRow above).
+  const handleRowClick = useCallback(
+    (path: string, index: number, event: React.MouseEvent) => {
+      if (event.shiftKey) {
+        const state = useExplorerStore.getState();
+        const tab = state.tabs.find((t) => t.id === state.activeTabId);
+        const anchor = tab?.selectionAnchor ?? path;
+        const anchorIndex = sortedEntries.findIndex((e) => e.path === anchor);
+        if (anchorIndex === -1) {
+          setSelected(path);
+          return;
+        }
+        const [start, end] = anchorIndex <= index ? [anchorIndex, index] : [index, anchorIndex];
+        selectRange(sortedEntries.slice(start, end + 1).map((e) => e.path));
+      } else if (event.ctrlKey || event.metaKey) {
+        toggleSelected(path);
+      } else {
+        setSelected(path);
+      }
+    },
+    [sortedEntries, setSelected, toggleSelected, selectRange],
+  );
+
   const registerRow = useCallback((path: string, el: HTMLTableRowElement | null) => {
     if (el) rowRefs.current.set(path, el);
     else rowRefs.current.delete(path);
@@ -283,9 +320,17 @@ function FileList() {
     void performTransfer(sourcePath, destDir, event.ctrlKey ? "copy" : "move");
   }, []);
 
+  // Right-clicking a row that's already part of the current multi-selection keeps the whole
+  // selection (matches Explorer/Finder); right-clicking anything else replaces it with just that
+  // row, same as a plain click. Reads the selection fresh via getState() for the same reason
+  // handleRowClick does — keeps this callback's identity stable across selection changes.
   const onRowContextMenu = useCallback(
     (path: string, isDir: boolean, x: number, y: number) => {
-      setSelected(path);
+      const state = useExplorerStore.getState();
+      const tab = state.tabs.find((t) => t.id === state.activeTabId);
+      if (!tab?.selectedPaths.includes(path)) {
+        setSelected(path);
+      }
       setMenu({ path, isDir, x, y });
     },
     [setSelected],
@@ -379,37 +424,58 @@ function FileList() {
 
       if (isModified && event.key.toLowerCase() === "v") {
         if (clipboard && currentPath) {
-          void performTransfer(clipboard.path, currentPath, clipboard.mode === "cut" ? "move" : "copy");
+          void performTransferBatch(clipboard.paths, currentPath, clipboard.mode === "cut" ? "move" : "copy");
         }
         return;
       }
-      if (!selectedPath) return;
+      if (isModified && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        selectAll(sortedEntries.map((entry) => entry.path));
+        return;
+      }
+      if (event.key === "Escape") {
+        clearSelection();
+        return;
+      }
+      if (selectedPaths.length === 0) return;
       if (isModified && event.key.toLowerCase() === "c") {
-        setClipboard({ path: selectedPath, mode: "copy" });
+        setClipboard({ paths: selectedPaths, mode: "copy" });
       } else if (isModified && event.key.toLowerCase() === "x") {
-        setClipboard({ path: selectedPath, mode: "cut" });
+        setClipboard({ paths: selectedPaths, mode: "cut" });
       } else if (event.key === "Delete") {
-        setPendingDeletePath(selectedPath);
-      } else if (event.key === "F2") {
+        setPendingDelete(selectedPaths);
+      } else if (event.key === "F2" && selectedPaths.length === 1 && selectedPath) {
         beginRename(selectedPath);
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPath, renamingPath, clipboard, currentPath, beginRename]);
+  }, [
+    selectedPath,
+    selectedPaths,
+    renamingPath,
+    clipboard,
+    currentPath,
+    beginRename,
+    sortedEntries,
+    selectAll,
+    clearSelection,
+  ]);
 
   if (!activeTab) return null;
   const tab = activeTab;
 
-  async function handleDelete(path: string) {
-    try {
-      await invoke("delete_entry", { path });
-      setSelected(null);
-      refresh();
-    } catch (error) {
-      showToast(String(error));
+  async function handleDeleteMany(paths: string[]) {
+    for (const path of paths) {
+      try {
+        await invoke("delete_entry", { path });
+      } catch (error) {
+        showToast(String(error));
+      }
     }
+    clearSelection();
+    refresh();
   }
 
   if (tab.error) {
@@ -483,13 +549,13 @@ function FileList() {
               key={entry.path}
               entry={entry}
               index={index}
-              isSelected={entry.path === selectedPath}
+              isSelected={selectedSet.has(entry.path)}
               isDragOver={entry.path === dragOverPath}
               isRenaming={entry.path === renamingPath}
               renameValue={entry.path === renamingPath ? renameValue : ""}
               renameInputRef={renameInputRef}
               registerRow={registerRow}
-              onSelect={setSelected}
+              onRowClick={handleRowClick}
               onNavigate={navigateTo}
               onRowKeyDown={handleRowKeyDown}
               onContextMenu={onRowContextMenu}
@@ -515,7 +581,8 @@ function FileList() {
         >
           <button
             onClick={() => {
-              setClipboard({ path: menu.path, mode: "copy" });
+              const paths = selectedPaths.includes(menu.path) ? selectedPaths : [menu.path];
+              setClipboard({ paths, mode: "copy" });
               setMenu(null);
             }}
           >
@@ -523,7 +590,8 @@ function FileList() {
           </button>
           <button
             onClick={() => {
-              setClipboard({ path: menu.path, mode: "cut" });
+              const paths = selectedPaths.includes(menu.path) ? selectedPaths : [menu.path];
+              setClipboard({ paths, mode: "cut" });
               setMenu(null);
             }}
           >
@@ -532,12 +600,14 @@ function FileList() {
           <button onClick={() => beginRename(menu.path)}>Rename</button>
           <button
             onClick={() => {
-              const path = menu.path;
+              const paths = selectedPaths.includes(menu.path) ? selectedPaths : [menu.path];
               setMenu(null);
-              setPendingDeletePath(path);
+              setPendingDelete(paths);
             }}
           >
-            Delete
+            {selectedPaths.includes(menu.path) && selectedPaths.length > 1
+              ? `Delete ${selectedPaths.length} items`
+              : "Delete"}
           </button>
           <div className="file-list__context-menu-separator" />
           {favoritePaths.includes(menu.path) ? (
@@ -579,16 +649,20 @@ function FileList() {
           )}
         </div>
       )}
-      {pendingDeletePath && (
+      {pendingDelete && (
         <ConfirmDialog
-          message="Move this item to the Recycle Bin?"
+          message={
+            pendingDelete.length > 1
+              ? `Move ${pendingDelete.length} items to the Recycle Bin?`
+              : "Move this item to the Recycle Bin?"
+          }
           confirmLabel="Delete"
           onConfirm={() => {
-            const path = pendingDeletePath;
-            setPendingDeletePath(null);
-            void handleDelete(path);
+            const paths = pendingDelete;
+            setPendingDelete(null);
+            void handleDeleteMany(paths);
           }}
-          onCancel={() => setPendingDeletePath(null)}
+          onCancel={() => setPendingDelete(null)}
         />
       )}
     </>

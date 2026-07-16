@@ -5,7 +5,7 @@ import { useSearchStore } from "../stores/useSearchStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { usePluginStore } from "../stores/usePluginStore";
 import { useToastStore } from "../stores/useToastStore";
-import { performTransfer } from "../services/fileTransfer";
+import { performTransferBatch } from "../services/fileTransfer";
 import { uniqueName } from "../utils/uniqueName";
 import "./Toolbar.css";
 
@@ -59,7 +59,7 @@ function Toolbar() {
     setPasting(true);
     const destDir = currentPath;
     try {
-      await performTransfer(clipboard.path, destDir, clipboard.mode === "cut" ? "move" : "copy");
+      await performTransferBatch(clipboard.paths, destDir, clipboard.mode === "cut" ? "move" : "copy");
     } finally {
       setPasting(false);
     }

@@ -53,6 +53,32 @@ export async function performTransfer(source: string, destDir: string, mode: Tra
   }
 }
 
+function waitForConflictResolution(): Promise<void> {
+  return new Promise((resolve) => {
+    const unsubscribe = useExplorerStore.subscribe((state) => {
+      if (state.pendingConflict === null) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
+}
+
+/** Transfers every source in sequence, reusing `performTransfer`'s single-file conflict/progress
+ * machinery for each one rather than building a separate batch UI. `performTransfer` doesn't
+ * itself wait for a conflict to be resolved — it just raises the dialog and returns — so this
+ * pauses the loop until `pendingConflict` clears (however the user resolved it: replace, keep
+ * both, or cancel) before moving on to the next source. A per-file cancel skips just that file
+ * and continues the batch, rather than aborting the whole paste. */
+export async function performTransferBatch(sources: string[], destDir: string, mode: TransferMode) {
+  for (const source of sources) {
+    await performTransfer(source, destDir, mode);
+    if (useExplorerStore.getState().pendingConflict) {
+      await waitForConflictResolution();
+    }
+  }
+}
+
 export async function resolvePendingConflict(action: "replace" | "keepBoth" | "cancel") {
   const store = useExplorerStore.getState();
   const conflict = store.pendingConflict;
