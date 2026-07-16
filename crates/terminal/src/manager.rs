@@ -59,17 +59,23 @@ impl TerminalManager {
                 Err(e) => last_error = format!("Could not start '{shell}': {e}"),
             }
         }
-        let child = spawned.ok_or(last_error)?;
+        let mut child = spawned.ok_or(last_error)?;
         drop(pair.slave);
 
-        let mut reader = pair
-            .master
-            .try_clone_reader()
-            .map_err(|e| format!("Could not read from PTY: {e}"))?;
-        let writer = pair
-            .master
-            .take_writer()
-            .map_err(|e| format!("Could not write to PTY: {e}"))?;
+        let mut reader = match pair.master.try_clone_reader() {
+            Ok(reader) => reader,
+            Err(e) => {
+                let _ = child.kill();
+                return Err(format!("Could not read from PTY: {e}"));
+            }
+        };
+        let writer = match pair.master.take_writer() {
+            Ok(writer) => writer,
+            Err(e) => {
+                let _ = child.kill();
+                return Err(format!("Could not write to PTY: {e}"));
+            }
+        };
 
         let id = self.next_id.fetch_add(1, Ordering::SeqCst).to_string();
 
@@ -118,7 +124,9 @@ impl TerminalManager {
         let mut session = sessions
             .remove(session_id)
             .ok_or_else(|| format!("No terminal session '{session_id}'"))?;
-        session.child.kill().map_err(|e| format!("Could not stop terminal: {e}"))
+        session.child.kill().map_err(|e| format!("Could not stop terminal: {e}"))?;
+        let _ = session.child.wait();
+        Ok(())
     }
 
     /// Kills every active session. Called when the terminal window closes, so no shell process
@@ -127,6 +135,7 @@ impl TerminalManager {
         let mut sessions = self.sessions.lock().unwrap();
         for (_, mut session) in sessions.drain() {
             let _ = session.child.kill();
+            let _ = session.child.wait();
         }
     }
 }
