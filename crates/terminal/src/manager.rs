@@ -146,6 +146,7 @@ mod tests {
     use std::sync::{Arc, Mutex as StdMutex};
     use std::time::Duration;
 
+    #[allow(clippy::type_complexity)]
     fn collect_output() -> (impl Fn(Vec<u8>) + Send + 'static, Arc<StdMutex<Vec<u8>>>) {
         let buf = Arc::new(StdMutex::new(Vec::new()));
         let buf2 = buf.clone();
