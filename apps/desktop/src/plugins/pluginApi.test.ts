@@ -40,6 +40,8 @@ function handlers(): PluginApiHandlers {
     scanDirectory: vi.fn().mockResolvedValue([]),
     hashFiles: vi.fn().mockResolvedValue([]),
     hashFileAll: vi.fn().mockResolvedValue({ md5: "", sha1: "", sha256: "" }),
+    listDirectory: vi.fn().mockResolvedValue([]),
+    renameEntry: vi.fn().mockResolvedValue("C:\\new-name.txt"),
   };
 }
 
@@ -58,6 +60,8 @@ describe("createPluginApi", () => {
     "git.read",
     "system.exec",
     "fs.scan",
+    "fs.list",
+    "fs.rename",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -83,6 +87,8 @@ describe("createPluginApi", () => {
     "scanDirectory",
     "hashFiles",
     "hashFileAll",
+    "listDirectory",
+    "renameEntry",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -114,6 +120,8 @@ describe("createPluginApi", () => {
     ["git.read", ["gitStatus", "gitLog"]],
     ["system.exec", ["runCommand"]],
     ["fs.scan", ["scanDirectory", "hashFiles", "hashFileAll"]],
+    ["fs.list", ["listDirectory"]],
+    ["fs.rename", ["renameEntry"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 

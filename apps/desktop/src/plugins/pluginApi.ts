@@ -1,3 +1,4 @@
+import type { EntryInfo } from "../types/filesystem";
 import type {
   CommandOutput,
   FileHash,
@@ -48,6 +49,8 @@ export interface PluginApiHandlers {
   scanDirectory: (root: string) => Promise<ScannedFile[]>;
   hashFiles: (paths: string[]) => Promise<FileHash[]>;
   hashFileAll: (path: string) => Promise<MultiHash>;
+  listDirectory: (path: string) => Promise<EntryInfo[]>;
+  renameEntry: (path: string, newName: string) => Promise<string>;
 }
 
 /**
@@ -110,6 +113,12 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
     api.scanDirectory = (root) => handlers.scanDirectory(root);
     api.hashFiles = (paths) => handlers.hashFiles(paths);
     api.hashFileAll = (path) => handlers.hashFileAll(path);
+  }
+  if (has("fs.list")) {
+    api.listDirectory = (path) => handlers.listDirectory(path);
+  }
+  if (has("fs.rename")) {
+    api.renameEntry = (path, newName) => handlers.renameEntry(path, newName);
   }
 
   return api;

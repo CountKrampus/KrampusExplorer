@@ -10,7 +10,8 @@ from.
 - ~~**Disk Usage Visualizer**~~ — built (single-level breakdown, not a full treemap), see
   `examples/plugins/disk-usage-visualizer/`
 - **Folder Size Analyzer** — quick per-folder size totals, lighter weight than the treemap
-- **Batch Rename** — regex/pattern rules with a live preview before committing
+- ~~**Batch Rename**~~ — built (operates on a whole folder, no multi-select yet), see
+  `examples/plugins/batch-rename/`
 - **File Tagging/Labels** — cross-folder tags independent of location, searchable
 - **File Notes** — attach freeform notes to a specific file or folder
 - **Smart Collections** — saved dynamic filters ("all PSDs modified this week") like smart playlists

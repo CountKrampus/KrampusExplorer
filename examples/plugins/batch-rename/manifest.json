@@ -1,0 +1,8 @@
+{
+  "id": "batch-rename",
+  "name": "Batch Rename",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "nav.read", "fs.list", "fs.rename"],
+  "entry": "frontend/index.js"
+}

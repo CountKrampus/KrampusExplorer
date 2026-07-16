@@ -4,6 +4,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { createPluginApi } from "../plugins/pluginApi";
 import { useExplorerStore } from "./useExplorerStore";
 import { useSettingsStore } from "./useSettingsStore";
+import type { DirectoryListing } from "../types/filesystem";
 import type {
   CommandOutput,
   FileHash,
@@ -180,6 +181,9 @@ export const usePluginStore = create<PluginState>((set) => ({
           scanDirectory: (root) => invoke<ScannedFile[]>("scan_directory", { root }),
           hashFiles: (paths) => invoke<FileHash[]>("hash_files", { paths }),
           hashFileAll: (path) => invoke<MultiHash>("hash_file_all", { path }),
+          listDirectory: (path) =>
+            invoke<DirectoryListing>("get_directory_listing", { path }).then((r) => r.entries),
+          renameEntry: (path, newName) => invoke<string>("rename_entry", { path, newName }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.

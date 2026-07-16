@@ -1,3 +1,5 @@
+import type { EntryInfo } from "./filesystem";
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -174,4 +176,12 @@ export interface PluginApi {
    * SHA-1, and SHA-256 of a single file in one streaming pass — the algorithms a download
    * page's published checksum is actually likely to use, unlike `hashFiles`' BLAKE3. */
   hashFileAll?: (path: string) => Promise<MultiHash>;
+  /** Present only if the plugin's manifest declares the "fs.list" permission. Non-recursive
+   * listing of `path`'s immediate children — the same data the core file list itself uses. */
+  listDirectory?: (path: string) => Promise<EntryInfo[]>;
+  /** Present only if the plugin's manifest declares the "fs.rename" permission. Renames the
+   * entry at `path` to `newName` (a bare name, not a full path) within the same folder; returns
+   * the new full path. Fails if `newName` already exists (unless it's just a case-only change on
+   * a case-insensitive filesystem). */
+  renameEntry?: (path: string, newName: string) => Promise<string>;
 }

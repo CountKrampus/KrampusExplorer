@@ -25,6 +25,7 @@ fuller examples covering most of the permissions below:
 - `examples/plugins/duplicate-finder/` — recursive scan + content hashing via `fs.scan`
 - `examples/plugins/disk-usage-visualizer/` — recursive scan via `fs.scan`
 - `examples/plugins/checksum-verifier/` — MD5/SHA-1/SHA-256 via `fs.scan`
+- `examples/plugins/batch-rename/` — Find/Replace with live preview via `fs.list`/`fs.rename`
 
 ## manifest.json
 
@@ -75,6 +76,8 @@ call, because ungranted methods simply don't exist on the object.
 | `git.read` | `api.gitStatus(repoPath)`, `api.gitLog(repoPath, limit)` |
 | `system.exec` | `api.runCommand(cwd, command)` |
 | `fs.scan` | `api.scanDirectory(root)`, `api.hashFiles(paths)`, `api.hashFileAll(path)` |
+| `fs.list` | `api.listDirectory(path)` |
+| `fs.rename` | `api.renameEntry(path, newName)` |
 
 ### `registerSidebarPanel`
 
@@ -202,6 +205,19 @@ Both require a `git` executable on `PATH` and fail if `repoPath` isn't inside a 
 - `hashFileAll(path: string): Promise<{ md5: string; sha1: string; sha256: string }>` — computes
   MD5, SHA-1, and SHA-256 of a single file in one streaming pass. Useful for matching a checksum
   published on a download page (which won't be BLAKE3).
+
+### `fs.list` methods
+
+- `listDirectory(path: string): Promise<EntryInfo[]>` — non-recursive listing of `path`'s
+  immediate children (same data the core file list itself uses). Each entry has `name`, `path`,
+  `isDir`, `size`, `modified`, `created`.
+
+### `fs.rename` methods
+
+- `renameEntry(path: string, newName: string): Promise<string>` — renames the entry at `path` to
+  `newName` (a bare name, not a full path) within the same folder; returns the new full path.
+  Fails if `newName` already exists (unless it's just a case-only change on a case-insensitive
+  filesystem).
 
 ## How entry files execute — and why this matters
 

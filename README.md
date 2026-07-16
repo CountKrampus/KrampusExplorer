@@ -23,7 +23,7 @@ See [Plan.md](Plan.md) for the full vision, architecture, and roadmap.
 
 ## Included example plugins
 
-`examples/plugins/` has eight working plugins demonstrating the SDK:
+`examples/plugins/` has nine working plugins demonstrating the SDK:
 
 | Plugin | What it does |
 |---|---|
@@ -35,6 +35,7 @@ See [Plan.md](Plan.md) for the full vision, architecture, and roadmap.
 | [duplicate-finder](examples/plugins/duplicate-finder) | Finds duplicate files by content hash, grouped with wasted-space totals |
 | [disk-usage-visualizer](examples/plugins/disk-usage-visualizer) | Recursive size breakdown of a folder's immediate children |
 | [checksum-verifier](examples/plugins/checksum-verifier) | Computes MD5/SHA-1/SHA-256 and checks against a pasted checksum |
+| [batch-rename](examples/plugins/batch-rename) | Find/Replace renaming for a folder's contents, with live preview |
 
 Copy a plugin's folder into your plugins directory (`%APPDATA%\Krampus Explorer\plugins\`) and
 restart the app to try one.
