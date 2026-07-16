@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useShallow } from "zustand/react/shallow";
 import { usePluginStore } from "../stores/usePluginStore";
 import "./PluginMarketplace.css";
 
@@ -33,7 +34,14 @@ export function filterUninstalled(
 }
 
 function PluginMarketplace() {
-  const installedIds = usePluginStore((state) => state.manifests.map((manifest) => manifest.id));
+  // useShallow (not a plain selector) — `.map()` returns a brand-new array on every call, and
+  // zustand's default equality is Object.is on the whole returned value, so an unwrapped selector
+  // here would never compare equal to its own previous result and would render forever (the same
+  // "Maximum update depth exceeded" crash TabBar had). useShallow's element-wise comparison
+  // works here because the elements are plain strings, unlike TabBar's case.
+  const installedIds = usePluginStore(
+    useShallow((state) => state.manifests.map((manifest) => manifest.id)),
+  );
   const loadPlugins = usePluginStore((state) => state.loadPlugins);
 
   const [entries, setEntries] = useState<MarketplaceEntry[] | null>(null);
