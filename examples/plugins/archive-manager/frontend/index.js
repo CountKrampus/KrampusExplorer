@@ -5,11 +5,24 @@
 // built by createPluginApi() and only contains methods this plugin's manifest.json declared
 // permission for (registerSidebarPanel: "ui.sidebar", registerContextMenuItem:
 // "ui.contextMenu", getSelectedPath/getCurrentPath: "nav.read", createZipArchive/
-// extractZipArchive: "fs.archive").
+// extractZipArchive: "fs.archive", registerCommand: "commands.register").
 
 function basename(path) {
   return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 }
+
+api.registerCommand?.({
+  id: "compress-selected",
+  label: "Compress Selected to .zip",
+  run: () => {
+    const path = api.getSelectedPath?.();
+    if (!path) {
+      window.alert("Select a file or folder first.");
+      return;
+    }
+    api.createZipArchive([path], `${path}.zip`).catch((error) => window.alert(String(error)));
+  },
+});
 
 // Both entries show up in the context menu for every file/folder — there's no API yet to hide
 // an item based on what was right-clicked, so each onClick early-returns (silently, no error)

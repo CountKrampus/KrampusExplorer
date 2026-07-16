@@ -10,10 +10,12 @@ import ConflictDialog from "./components/ConflictDialog";
 import TransferProgress from "./components/TransferProgress";
 import ToastContainer from "./components/ToastContainer";
 import SettingsPanel from "./settings/SettingsPanel";
+import CommandPalette from "./components/CommandPalette";
 import { useExplorerStore } from "./stores/useExplorerStore";
 import { useSettingsStore } from "./stores/useSettingsStore";
 import { usePluginStore } from "./stores/usePluginStore";
 import { useUpdateStore } from "./stores/useUpdateStore";
+import { useCommandPaletteStore } from "./stores/useCommandPaletteStore";
 import { useTabFetcher } from "./hooks/useTabFetcher";
 import { useResolvedTheme } from "./hooks/useResolvedTheme";
 import "./styles/theme.css";
@@ -100,6 +102,18 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const toggleCommandPalette = useCommandPaletteStore((state) => state.toggle);
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        toggleCommandPalette();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleCommandPalette]);
+
   if (tabCount === 0) {
     return (
       <div className="app">
@@ -124,6 +138,7 @@ function App() {
       <ConflictDialog />
       <TransferProgress />
       <SettingsPanel />
+      <CommandPalette />
       <ToastContainer />
     </div>
   );

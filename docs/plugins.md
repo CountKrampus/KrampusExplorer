@@ -78,6 +78,7 @@ call, because ungranted methods simply don't exist on the object.
 | `fs.scan` | `api.scanDirectory(root)`, `api.hashFiles(paths)`, `api.hashFileAll(path)` |
 | `fs.list` | `api.listDirectory(path)` |
 | `fs.rename` | `api.renameEntry(path, newName)` |
+| `commands.register` | `api.registerCommand(command)` |
 
 ### `registerSidebarPanel`
 
@@ -219,6 +220,20 @@ Both require a `git` executable on `PATH` and fail if `repoPath` isn't inside a 
   Fails if `newName` already exists (unless it's just a case-only change on a case-insensitive
   filesystem).
 
+### `registerCommand`
+
+```ts
+api.registerCommand({
+  id: string,     // unique within this plugin
+  label: string,  // shown in the command palette's list
+  run: () => void,
+});
+```
+
+Adds an entry to the command palette (`Ctrl+K`/`Cmd+K`), alongside the app's built-in commands
+and any other plugins' commands. There's no arguments passed to `run` — a command is a fixed
+action, not something that takes input at invocation time.
+
 ## How entry files execute — and why this matters
 
 An entry file is loaded as plain text via IPC and run through `new Function("api", code)` — it is
@@ -254,7 +269,6 @@ slate rather than trying to surgically unregister just the one being turned off.
 Everything else `Plan.md`'s Plugin Capabilities list mentions is deferred — each needs a host UI
 surface that doesn't exist yet:
 
-- Commands / command palette (no command palette exists in the app at all yet)
 - Settings pages (plugins can't currently contribute their own settings UI)
 - Background services, notifications (no lifecycle hooks or notification system exist yet)
 - A real permission-enforcement sandbox (see above)

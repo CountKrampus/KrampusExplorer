@@ -6,6 +6,7 @@ import type {
   GitFileStatus,
   MultiHash,
   PluginApi,
+  PluginCommand,
   PluginContextMenuItem,
   PluginFileHandler,
   PluginManifest,
@@ -20,6 +21,7 @@ export interface PluginApiHandlers {
   registerToolbarButton: (pluginId: string, button: PluginToolbarButton) => void;
   registerContextMenuItem: (pluginId: string, item: PluginContextMenuItem) => void;
   registerFileHandler: (pluginId: string, handler: PluginFileHandler) => void;
+  registerCommand: (pluginId: string, command: PluginCommand) => void;
   readTextFile: (path: string) => Promise<string>;
   getCurrentPath: () => string | null;
   getSelectedPath: () => string | null;
@@ -119,6 +121,9 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
   }
   if (has("fs.rename")) {
     api.renameEntry = (path, newName) => handlers.renameEntry(path, newName);
+  }
+  if (has("commands.register")) {
+    api.registerCommand = (command) => handlers.registerCommand(manifest.id, command);
   }
 
   return api;

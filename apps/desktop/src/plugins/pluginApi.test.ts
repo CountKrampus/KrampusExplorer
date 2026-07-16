@@ -21,6 +21,7 @@ function handlers(): PluginApiHandlers {
     registerToolbarButton: vi.fn(),
     registerContextMenuItem: vi.fn(),
     registerFileHandler: vi.fn(),
+    registerCommand: vi.fn(),
     readTextFile: vi.fn().mockResolvedValue("file contents"),
     getCurrentPath: vi.fn().mockReturnValue("C:\\Users\\boo"),
     getSelectedPath: vi.fn().mockReturnValue("C:\\Users\\boo\\a.txt"),
@@ -62,6 +63,7 @@ describe("createPluginApi", () => {
     "fs.scan",
     "fs.list",
     "fs.rename",
+    "commands.register",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -89,6 +91,7 @@ describe("createPluginApi", () => {
     "hashFileAll",
     "listDirectory",
     "renameEntry",
+    "registerCommand",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -122,6 +125,7 @@ describe("createPluginApi", () => {
     ["fs.scan", ["scanDirectory", "hashFiles", "hashFileAll"]],
     ["fs.list", ["listDirectory"]],
     ["fs.rename", ["renameEntry"]],
+    ["commands.register", ["registerCommand"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -181,6 +185,16 @@ describe("createPluginApi", () => {
     api.registerFileHandler?.(fileHandler);
 
     expect(h.registerFileHandler).toHaveBeenCalledWith("test-plugin", fileHandler);
+  });
+
+  it("forwards the plugin's id when registering a command", () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["commands.register"]), h);
+    const command = { id: "cmd-1", label: "Do Something", run: vi.fn() };
+
+    api.registerCommand?.(command);
+
+    expect(h.registerCommand).toHaveBeenCalledWith("test-plugin", command);
   });
 
   it("readTextFile resolves with the handler's result", async () => {

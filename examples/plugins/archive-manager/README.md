@@ -21,9 +21,15 @@ relabels the fields and the action button instead of showing two separate sectio
   `<filename>\` folder next to it (matches Windows Explorer's own "Extract Here"). Shown for
   every entry, but silently does nothing if the clicked entry isn't a `.zip` file.
 
+## Command palette
+
+- **Compress Selected to .zip** — zips the currently selected file/folder into a sibling
+  `<name>.zip`, same as the sidebar panel's Compress mode but reachable via `Ctrl+K`.
+
 ## Permissions
 
 - `ui.sidebar` — registers the panel.
 - `ui.contextMenu` — registers the "Compress to .zip" and "Extract Here" context menu entries.
 - `nav.read` — pre-fills source fields from the currently selected file/folder.
 - `fs.archive` — create and extract zip archives.
+- `commands.register` — registers the "Compress Selected to .zip" command.

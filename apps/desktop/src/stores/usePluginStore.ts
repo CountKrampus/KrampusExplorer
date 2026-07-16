@@ -11,6 +11,7 @@ import type {
   GitCommit,
   GitFileStatus,
   MultiHash,
+  PluginCommand,
   PluginContextMenuItem,
   PluginFileHandler,
   PluginManifest,
@@ -33,6 +34,10 @@ export interface RegisteredContextMenuItem extends PluginContextMenuItem {
 }
 
 export interface RegisteredFileHandler extends PluginFileHandler {
+  pluginId: string;
+}
+
+export interface RegisteredCommand extends PluginCommand {
   pluginId: string;
 }
 
@@ -86,6 +91,7 @@ interface PluginState {
   toolbarButtons: RegisteredToolbarButton[];
   contextMenuItems: RegisteredContextMenuItem[];
   fileHandlers: RegisteredFileHandler[];
+  commands: RegisteredCommand[];
   errors: PluginLoadError[];
   loaded: boolean;
   loadPlugins: () => Promise<void>;
@@ -97,6 +103,7 @@ export const usePluginStore = create<PluginState>((set) => ({
   toolbarButtons: [],
   contextMenuItems: [],
   fileHandlers: [],
+  commands: [],
   errors: [],
   loaded: false,
 
@@ -104,7 +111,7 @@ export const usePluginStore = create<PluginState>((set) => ({
     // Reset registration state before re-scanning: plugin entry scripts register their UI as a
     // side effect (not idempotent), so re-running them — e.g. after toggling a plugin on/off —
     // must start from a clean slate rather than appending to whatever was registered before.
-    set({ panels: [], toolbarButtons: [], contextMenuItems: [], fileHandlers: [] });
+    set({ panels: [], toolbarButtons: [], contextMenuItems: [], fileHandlers: [], commands: [] });
 
     let manifests: PluginManifest[] = [];
     try {
@@ -153,6 +160,9 @@ export const usePluginStore = create<PluginState>((set) => ({
           },
           registerFileHandler: (pluginId, handler) => {
             set((state) => ({ fileHandlers: [...state.fileHandlers, { ...handler, pluginId }] }));
+          },
+          registerCommand: (pluginId, command) => {
+            set((state) => ({ commands: [...state.commands, { ...command, pluginId }] }));
           },
           readTextFile: async (path) => {
             const preview = await invoke<TextPreviewPayload>("read_text_preview", { path });

@@ -52,6 +52,13 @@ export interface PluginFileHandler {
   render: (path: string, container: HTMLElement) => void | (() => void);
 }
 
+export interface PluginCommand {
+  id: string;
+  /** Shown in the command palette's list. */
+  label: string;
+  run: () => void;
+}
+
 export interface GitFileStatus {
   path: string;
   /** Raw two-character `git status --porcelain` code, e.g. " M", "??", "A ". */
@@ -184,4 +191,7 @@ export interface PluginApi {
    * the new full path. Fails if `newName` already exists (unless it's just a case-only change on
    * a case-insensitive filesystem). */
   renameEntry?: (path: string, newName: string) => Promise<string>;
+  /** Present only if the plugin's manifest declares the "commands.register" permission. Adds
+   * an entry to the command palette (`Ctrl+K`), alongside built-in and other plugins' commands. */
+  registerCommand?: (command: PluginCommand) => void;
 }

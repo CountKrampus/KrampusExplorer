@@ -64,9 +64,8 @@ from.
 - **Redis Explorer** — browse keys, inspect values, TTLs
 - **Snippet Library** — save and insert reusable code snippets
 - **Secret Scanner** — scan a folder for accidentally-committed credentials/keys
-- **Command Palette** — `Ctrl+Shift+P` fuzzy launcher. The core already reserves an API for this
-  (`Plan.md` lists "Command Palette Registration" as a core service), but it's never been built
-  as an actual feature.
+- ~~**Command Palette**~~ — built as a core feature (`Ctrl+K`), with a `commands.register`
+  plugin permission. See `docs/plugins.md`.
 
 ## Server & remote management
 

@@ -44,6 +44,7 @@ restart the app to try one.
 
 | Shortcut | Action |
 |---|---|
+| `Ctrl+K` | Open the command palette |
 | `F2` | Rename selected item |
 | `Delete` | Move selected item to Recycle Bin |
 | `Ctrl+C` | Copy selected item |
