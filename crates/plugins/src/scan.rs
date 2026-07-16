@@ -32,19 +32,26 @@ pub struct MultiHash {
 /// followed — `read_dir`'s `file_type()` reports a symlink as neither a file nor a directory
 /// unless it's resolved, and we deliberately don't resolve it, to avoid infinite loops on a
 /// symlink cycle.
+///
+/// A subdirectory this process can't read (permission-denied system folders like
+/// `$RECYCLE.BIN\<sid>` or another user's protected Temp files are common when scanning a whole
+/// drive) is skipped rather than failing the entire scan — matches `crates/search`'s own walker,
+/// which has the same "one unreadable folder shouldn't abort the whole operation" reasoning.
 pub fn scan_directory(root: &str) -> Result<Vec<ScannedFile>, String> {
     let root_path = Path::new(root);
     if !root_path.is_dir() {
         return Err(format!("'{root}' is not a directory"));
     }
     let mut results = Vec::new();
-    walk(root_path, &mut results)?;
+    walk(root_path, &mut results);
     Ok(results)
 }
 
-fn walk(dir: &Path, results: &mut Vec<ScannedFile>) -> Result<(), String> {
-    let read_dir =
-        std::fs::read_dir(dir).map_err(|e| format!("Could not read '{}': {e}", dir.display()))?;
+fn walk(dir: &Path, results: &mut Vec<ScannedFile>) {
+    let read_dir = match std::fs::read_dir(dir) {
+        Ok(rd) => rd,
+        Err(_) => return,
+    };
 
     for entry in read_dir.flatten() {
         let Ok(file_type) = entry.file_type() else {
@@ -52,7 +59,7 @@ fn walk(dir: &Path, results: &mut Vec<ScannedFile>) -> Result<(), String> {
         };
         let path = entry.path();
         if file_type.is_dir() {
-            walk(&path, results)?;
+            walk(&path, results);
         } else if file_type.is_file() {
             let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
             results.push(ScannedFile {
@@ -61,7 +68,6 @@ fn walk(dir: &Path, results: &mut Vec<ScannedFile>) -> Result<(), String> {
             });
         }
     }
-    Ok(())
 }
 
 /// Hashes each of `paths` with BLAKE3, streaming the file contents rather than reading it fully

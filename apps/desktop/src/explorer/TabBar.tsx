@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useExplorerStore } from "../stores/useExplorerStore";
 import "./TabBar.css";
@@ -12,15 +13,31 @@ interface TabSummary {
   label: string;
 }
 
+// A plain space is fine here even though filenames commonly contain spaces — `tab.id` (format
+// `tab-<n>`) never does, so splitting off the first token as the id and rejoining every
+// remaining token as the label (below) is unambiguous regardless of what's in the label.
+const KEY_SEPARATOR = " ";
+
+/** `useShallow`'s array comparison checks each element by reference (`Object.is`) — it does NOT
+ * recursively compare object fields. Mapping tabs straight to `{ id, label }` object literals
+ * inside the selector means every call mints brand-new objects, so the array can never compare
+ * as "unchanged" even when nothing meaningful changed, which starves React's render loop
+ * (`Maximum update depth exceeded`). Selecting primitive strings instead works correctly, since
+ * JS string primitives compare by value; the `{ id, label }` objects are then derived via a
+ * separate `useMemo` keyed on those stable strings. */
 function TabBar() {
-  // Projected to just {id, label} and shallow-compared, so this only re-renders when a tab is
-  // added/removed/renamed (its current path changes) — not on every selection click or
-  // unrelated per-tab field update (entries, selectedPath, loading, etc.), since those don't
-  // change what's rendered here.
-  const tabs = useExplorerStore(
-    useShallow((state): TabSummary[] =>
-      state.tabs.map((tab) => ({ id: tab.id, label: tabLabel(tab.history[tab.historyIndex]) })),
+  const tabKeys = useExplorerStore(
+    useShallow((state): string[] =>
+      state.tabs.map((tab) => `${tab.id}${KEY_SEPARATOR}${tabLabel(tab.history[tab.historyIndex])}`),
     ),
+  );
+  const tabs = useMemo<TabSummary[]>(
+    () =>
+      tabKeys.map((key) => {
+        const [id, ...labelParts] = key.split(KEY_SEPARATOR);
+        return { id, label: labelParts.join(KEY_SEPARATOR) };
+      }),
+    [tabKeys],
   );
   const activeTabId = useExplorerStore((state) => state.activeTabId);
   const setActiveTab = useExplorerStore((state) => state.setActiveTab);
