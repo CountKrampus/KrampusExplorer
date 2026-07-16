@@ -114,11 +114,30 @@ mod tests {
         assert!(result.is_err());
     }
 
+    // Absolute-path syntax is platform-specific — `Path::is_absolute()` only recognizes a
+    // `C:\...`-style prefix on Windows and a leading `/` on Unix, so this needs one test per
+    // platform to actually exercise the check on both the app's real runtime target (Windows)
+    // and the CI runner (Linux) rather than silently skipping coverage on one of them.
     #[test]
-    fn rejects_an_absolute_relative_path() {
+    #[cfg(windows)]
+    fn rejects_an_absolute_relative_path_windows() {
         let dir = tempdir().unwrap();
         let files = vec![PluginFile {
             relative_path: "C:\\Windows\\evil.txt".to_string(),
+            content: "pwned".to_string(),
+        }];
+
+        let result = install_plugin("my-plugin", &files, Some(dir.path()));
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn rejects_an_absolute_relative_path_unix() {
+        let dir = tempdir().unwrap();
+        let files = vec![PluginFile {
+            relative_path: "/etc/evil.txt".to_string(),
             content: "pwned".to_string(),
         }];
 
