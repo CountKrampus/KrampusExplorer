@@ -2,12 +2,14 @@ import { useCallback, useRef } from "react";
 import DriveList from "./DriveList";
 import FavoritesList from "./FavoritesList";
 import PluginPanel from "./PluginPanel";
+import IconRail, { panelKey } from "./IconRail";
 import { usePluginStore } from "../stores/usePluginStore";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import "./Sidebar.css";
 
 function Sidebar() {
   const panels = usePluginStore((state) => state.panels);
+  const activePanelKey = useSettingsStore((state) => state.activePluginPanel);
   const width = useSettingsStore((state) => state.sidebarWidth);
   const setWidth = useSettingsStore((state) => state.setSidebarWidth);
   const draggingRef = useRef(false);
@@ -35,12 +37,24 @@ function Sidebar() {
 
   return (
     <div className="sidebar-wrapper" style={{ width }}>
+      <IconRail />
       <aside className="sidebar">
         <FavoritesList />
         <DriveList />
-        {panels.map((panel) => (
-          <PluginPanel key={`${panel.pluginId}:${panel.id}`} panel={panel} />
-        ))}
+        {panels.length > 0 && (
+          <div className="sidebar__plugin-content">
+            {activePanelKey === null && (
+              <p className="sidebar__message">Select a plugin icon above.</p>
+            )}
+            {panels.map((panel) => (
+              <PluginPanel
+                key={panelKey(panel.pluginId, panel.id)}
+                panel={panel}
+                active={panelKey(panel.pluginId, panel.id) === activePanelKey}
+              />
+            ))}
+          </div>
+        )}
       </aside>
       <div
         className="sidebar__resize-handle"

@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { RegisteredSidebarPanel } from "../stores/usePluginStore";
-import CollapsibleSection from "./CollapsibleSection";
 
 interface PluginPanelProps {
   panel: RegisteredSidebarPanel;
+  /** Whether this is the panel currently selected in the icon rail. Hidden via CSS rather than
+   * unmounted when not active — `panel.render()`'s effect only fires once per mount (keyed on
+   * plugin id, not on active state), so unmounting on deselect would mean it never re-runs when
+   * reselected, leaving the panel permanently blank after one switch-away/switch-back cycle. */
+  active: boolean;
 }
 
-function PluginPanel({ panel }: PluginPanelProps) {
+function PluginPanel({ panel, active }: PluginPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +37,8 @@ function PluginPanel({ panel }: PluginPanelProps) {
   }, [panel.pluginId, panel.id]);
 
   return (
-    <CollapsibleSection sectionId={`${panel.pluginId}:${panel.id}`} title={panel.title}>
+    <div className="sidebar__plugin-panel" style={active ? undefined : { display: "none" }}>
+      <h3 className="sidebar__heading">{panel.title}</h3>
       {error ? (
         <p className="sidebar__message sidebar__message--error">
           "{panel.title}" failed to load: {error}
@@ -41,7 +46,7 @@ function PluginPanel({ panel }: PluginPanelProps) {
       ) : (
         <div ref={containerRef} />
       )}
-    </CollapsibleSection>
+    </div>
   );
 }
 

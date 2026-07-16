@@ -23,6 +23,7 @@ interface BackendSettings {
   sidebarWidth: number;
   sortField: string;
   sortDirection: string;
+  activePluginPanel: string | null;
 }
 
 const DEFAULTS: BackendSettings = {
@@ -38,6 +39,7 @@ const DEFAULTS: BackendSettings = {
   sidebarWidth: 200,
   sortField: "name",
   sortDirection: "asc",
+  activePluginPanel: null,
 };
 
 function asTheme(value: string): Theme {
@@ -76,6 +78,7 @@ interface SettingsState {
   sidebarWidth: number;
   sortField: SortField;
   sortDirection: SortDirection;
+  activePluginPanel: string | null;
   panelOpen: boolean;
   loadSettings: () => Promise<void>;
   setTheme: (theme: Theme) => void;
@@ -90,6 +93,7 @@ interface SettingsState {
   toggleSidebarSection: (sectionId: string) => void;
   setSidebarWidth: (width: number) => void;
   setSort: (field: SortField) => void;
+  setActivePluginPanel: (key: string | null) => void;
   setPanelOpen: (open: boolean) => void;
 }
 
@@ -110,6 +114,7 @@ function persist(state: SettingsState) {
     sidebarWidth: state.sidebarWidth,
     sortField: state.sortField,
     sortDirection: state.sortDirection,
+    activePluginPanel: state.activePluginPanel,
   };
   invoke("save_settings", { settings: payload }).catch((error: string) => {
     console.error("Could not save settings:", error);
@@ -130,6 +135,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   sidebarWidth: DEFAULTS.sidebarWidth,
   sortField: asSortField(DEFAULTS.sortField),
   sortDirection: asSortDirection(DEFAULTS.sortDirection),
+  activePluginPanel: DEFAULTS.activePluginPanel,
   panelOpen: false,
 
   loadSettings: async () => {
@@ -148,6 +154,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         sidebarWidth: settings.sidebarWidth,
         sortField: asSortField(settings.sortField),
         sortDirection: asSortDirection(settings.sortDirection),
+        activePluginPanel: settings.activePluginPanel,
         loaded: true,
       });
     } catch {
@@ -233,6 +240,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } else {
       set({ sortField: field, sortDirection: "asc" });
     }
+    persist(get());
+  },
+
+  setActivePluginPanel: (activePluginPanel) => {
+    set({ activePluginPanel });
     persist(get());
   },
 

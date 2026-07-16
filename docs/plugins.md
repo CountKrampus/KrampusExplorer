@@ -99,6 +99,14 @@ panel is ever torn down.
 CSS custom properties from the app's theme (`--bg`, `--fg`, `--fg-muted`, `--border`, `--accent`,
 `--danger`) are available to style against, same as the rest of the app.
 
+Every plugin panel gets one icon in the **icon rail** — a narrow strip on the sidebar's left edge.
+Clicking a plugin's icon shows only that plugin's panel in the shared content area below the
+favorites/drives lists; clicking the active icon again hides it. Only one panel is visible at a
+time, which keeps the sidebar usable once several plugins are installed. The icon comes from the
+plugin's `icon.png` (see `manifest.json` below); plugins without one get a placeholder showing the
+first letter of the panel title. Panels are hidden with CSS (`display: none`) rather than
+unmounted when not active, since `render()` only runs once per mount.
+
 ### `registerToolbarButton`
 
 ```ts

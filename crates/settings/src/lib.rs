@@ -46,6 +46,11 @@ pub struct Settings {
     /// "asc" | "desc"
     #[serde(default = "default_sort_direction")]
     pub sort_direction: String,
+    /// `"<pluginId>:<panelId>"` of the plugin sidebar panel currently shown in the icon-rail
+    /// content area, or `None` if none is selected. Only one plugin panel is visible at a time —
+    /// see `docs/plugins.md`'s sidebar section for why.
+    #[serde(default)]
+    pub active_plugin_panel: Option<String>,
 }
 
 impl Default for Settings {
@@ -63,6 +68,7 @@ impl Default for Settings {
             sidebar_width: default_sidebar_width(),
             sort_field: default_sort_field(),
             sort_direction: default_sort_direction(),
+            active_plugin_panel: None,
         }
     }
 }
@@ -144,6 +150,7 @@ mod tests {
             sidebar_width: 260,
             sort_field: "size".to_string(),
             sort_direction: "desc".to_string(),
+            active_plugin_panel: Some("duplicate-finder:duplicate-finder".to_string()),
         };
 
         save_settings(&settings, Some(&path)).unwrap();
@@ -254,6 +261,22 @@ mod tests {
         assert_eq!(settings.theme, "dark");
         assert_eq!(settings.sort_field, "name");
         assert_eq!(settings.sort_direction, "asc");
+    }
+
+    #[test]
+    fn load_settings_fills_in_missing_active_plugin_panel_without_resetting_everything_else() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            r##"{"theme":"dark","accentColor":"#ff0000","startupMode":"custom","startupCustomPath":"C:\\Projects","iconSize":"large"}"##,
+        )
+        .unwrap();
+
+        let settings = load_settings(Some(&path));
+
+        assert_eq!(settings.theme, "dark");
+        assert_eq!(settings.active_plugin_panel, None);
     }
 
     #[test]

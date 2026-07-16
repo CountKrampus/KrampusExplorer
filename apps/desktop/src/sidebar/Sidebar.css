@@ -5,11 +5,18 @@
 }
 
 .sidebar {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   overflow-y: auto;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
   padding: 8px 0;
+}
+
+.sidebar__plugin-content {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
 }
 
 .sidebar__resize-handle {

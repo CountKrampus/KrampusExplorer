@@ -40,6 +40,18 @@ describe("setSort", () => {
   });
 });
 
+describe("setActivePluginPanel", () => {
+  it("sets and clears the active panel key", () => {
+    useSettingsStore.setState({ activePluginPanel: null });
+
+    useSettingsStore.getState().setActivePluginPanel("duplicate-finder:duplicate-finder");
+    expect(useSettingsStore.getState().activePluginPanel).toBe("duplicate-finder:duplicate-finder");
+
+    useSettingsStore.getState().setActivePluginPanel(null);
+    expect(useSettingsStore.getState().activePluginPanel).toBeNull();
+  });
+});
+
 describe("toggleSidebarSection", () => {
   it("adds then removes a section id", () => {
     useSettingsStore.setState({ collapsedSidebarSections: [] });
