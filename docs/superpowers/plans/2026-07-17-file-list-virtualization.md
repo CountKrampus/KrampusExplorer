@@ -1205,3 +1205,28 @@ Run the dev build (`npm run tauri dev` from `apps/desktop`) and check:
 git add apps/desktop/src/explorer/FileList.tsx
 git commit -m "Wire VirtualFileTable in above the entry-count threshold"
 ```
+
+- [ ] **Step 8 (hardening, added after review): fix F2/rename on a scrolled-out-of-view row**
+
+Holistic review after wiring everything together found a real, high-severity bug: `beginRename`
+set `renamingPath` unconditionally without checking whether the target row was mounted. In the
+virtualized path, renaming a row that's scrolled out of view left `renamingPath` set with no
+`<input>` anywhere in the DOM — and since the global keydown handler's `if (renamingPath) return;`
+runs before its Escape check, the user couldn't even cancel out of the phantom rename. A related
+minor accessibility gap: the virtualized body div was missing `role="rowgroup"`.
+
+Fixed in commit `d35de10`:
+- `beginRename` (`FileList.tsx`) now looks up the entry/index via `sortedEntries.findIndex(...)`
+  and calls `listRef.current?.scrollToItem(index)` when the row isn't in `rowRefs.current`, so it
+  actually mounts.
+- The rename `<input>` in both `FileRow` (`FileTable.tsx`) and `VirtualRow`
+  (`VirtualFileTable.tsx`) now uses a callback ref that focuses+selects itself the moment it
+  mounts, rather than relying solely on `FileList.tsx`'s `useEffect(() => {...}, [renamingPath])`
+  — that effect fires too early for a row that doesn't exist in the DOM yet, so the fix has to
+  live at the point of actual mount, not at the point `renamingPath` state changes.
+- `VirtualFileTable.tsx`'s virtual body wrapper gained `role="rowgroup"`.
+
+```bash
+git add apps/desktop/src/explorer/FileList.tsx apps/desktop/src/explorer/FileTable.tsx apps/desktop/src/explorer/VirtualFileTable.tsx
+git commit -m "Fix F2/context-menu rename on a scrolled-out-of-view row in the virtualized file list"
+```
