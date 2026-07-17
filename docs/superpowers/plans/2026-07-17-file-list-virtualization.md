@@ -1230,3 +1230,24 @@ Fixed in commit `d35de10`:
 git add apps/desktop/src/explorer/FileList.tsx apps/desktop/src/explorer/FileTable.tsx apps/desktop/src/explorer/VirtualFileTable.tsx
 git commit -m "Fix F2/context-menu rename on a scrolled-out-of-view row in the virtualized file list"
 ```
+
+- [ ] **Step 9 (hardening, found via live manual testing): fix rename input clipped to ellipsis**
+
+Live-testing the shipped feature against a real 300-file folder found a second, distinct bug:
+the rename `<input>` in the virtualized path rendered but was visually clipped down to just
+"..." by `.file-list__row--grid [role="gridcell"]`'s `text-overflow: ellipsis` rule (added in
+Task 5 to keep long filenames from breaking the grid layout) — the input kept receiving real
+keystrokes underneath (confirmed no data corruption), but the user couldn't see anything typed.
+The non-virtualized `FileTable` path was unaffected (its `<td>` has no such ellipsis rule).
+
+Fixed in commit `114ad11`:
+- `VirtualRow`'s Name gridcell (`VirtualFileTable.tsx`) gets
+  `className={isRenaming ? "file-list__gridcell--editing" : undefined}`.
+- `FileList.css` gained `.file-list__row--grid [role="gridcell"].file-list__gridcell--editing {
+  overflow: visible; text-overflow: clip; white-space: normal; }`, overriding the ellipsis
+  rule only while that specific cell is in edit mode.
+
+```bash
+git add apps/desktop/src/explorer/VirtualFileTable.tsx apps/desktop/src/explorer/FileList.css
+git commit -m "Fix rename input being clipped to ellipsis in the virtualized file list"
+```
