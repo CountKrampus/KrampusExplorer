@@ -53,6 +53,7 @@ export interface PluginApiHandlers {
   hashFileAll: (path: string) => Promise<MultiHash>;
   listDirectory: (path: string) => Promise<EntryInfo[]>;
   renameEntry: (path: string, newName: string) => Promise<string>;
+  openTerminal: () => Promise<void>;
 }
 
 /**
@@ -124,6 +125,9 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
   }
   if (has("commands.register")) {
     api.registerCommand = (command) => handlers.registerCommand(manifest.id, command);
+  }
+  if (has("ui.terminal")) {
+    api.openTerminal = () => handlers.openTerminal();
   }
 
   return api;

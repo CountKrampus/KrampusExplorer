@@ -194,4 +194,9 @@ export interface PluginApi {
   /** Present only if the plugin's manifest declares the "commands.register" permission. Adds
    * an entry to the command palette (`Ctrl+K`), alongside built-in and other plugins' commands. */
   registerCommand?: (command: PluginCommand) => void;
+  /** Present only if the plugin's manifest declares the "ui.terminal" permission. Opens the
+   * detached terminal window (creating it if it doesn't exist yet, else focusing it) — a real
+   * interactive shell with tabs, running as core-app functionality rather than sandboxed plugin
+   * code. */
+  openTerminal?: () => Promise<void>;
 }

@@ -43,6 +43,7 @@ function handlers(): PluginApiHandlers {
     hashFileAll: vi.fn().mockResolvedValue({ md5: "", sha1: "", sha256: "" }),
     listDirectory: vi.fn().mockResolvedValue([]),
     renameEntry: vi.fn().mockResolvedValue("C:\\new-name.txt"),
+    openTerminal: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -64,6 +65,7 @@ describe("createPluginApi", () => {
     "fs.list",
     "fs.rename",
     "commands.register",
+    "ui.terminal",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -92,6 +94,7 @@ describe("createPluginApi", () => {
     "listDirectory",
     "renameEntry",
     "registerCommand",
+    "openTerminal",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -126,6 +129,7 @@ describe("createPluginApi", () => {
     ["fs.list", ["listDirectory"]],
     ["fs.rename", ["renameEntry"]],
     ["commands.register", ["registerCommand"]],
+    ["ui.terminal", ["openTerminal"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -236,5 +240,14 @@ describe("createPluginApi", () => {
     await api.runCommand?.("C:\\project", "git status");
 
     expect(h.runCommand).toHaveBeenCalledWith("C:\\project", "git status");
+  });
+
+  it("openTerminal calls the handler with no arguments", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["ui.terminal"]), h);
+
+    await api.openTerminal?.();
+
+    expect(h.openTerminal).toHaveBeenCalledWith();
   });
 });
