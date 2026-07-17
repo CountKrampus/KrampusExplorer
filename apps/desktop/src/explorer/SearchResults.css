@@ -55,3 +55,43 @@
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
 }
+
+.search-results--virtual {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.search-results__header-row {
+  display: grid;
+  padding: 0;
+  padding-right: 17px; /* Matches FixedSizeList's always-reserved vertical scrollbar (same
+    reasoning as VirtualFileTable's identical rule in FileList.css) so header columns stay
+    aligned with body columns whether or not the list actually needs to scroll. */
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.search-results__header-row [role="columnheader"] {
+  padding: 6px 10px;
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+.search-results__virtual-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.search-results__row--grid {
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.search-results__row--grid [role="gridcell"] {
+  padding: 4px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
