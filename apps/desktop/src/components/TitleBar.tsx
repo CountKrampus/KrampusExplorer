@@ -1,15 +1,19 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./TitleBar.css";
 
-// Module-scope singleton: this app has exactly one window. Tests that import
-// TitleBar (directly or via App.tsx) need to mock @tauri-apps/api/window
-// before import, since this call runs at module load time, not render time.
+// Module-scope singleton: each Tauri window (main explorer, detached terminal) gets its own
+// isolated JS module instance, so this correctly resolves to whichever window this code is
+// actually running in — not always the main window.
 const appWindow = getCurrentWindow();
 
-function TitleBar() {
+interface TitleBarProps {
+  title?: string;
+}
+
+function TitleBar({ title = "Krampus Explorer" }: TitleBarProps) {
   return (
     <div className="title-bar" data-tauri-drag-region>
-      <span className="title-bar__title">Krampus Explorer</span>
+      <span className="title-bar__title">{title}</span>
       <div className="title-bar__controls">
         <button
           className="title-bar__button"
