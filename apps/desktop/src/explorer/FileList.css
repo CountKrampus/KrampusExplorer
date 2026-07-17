@@ -158,6 +158,10 @@
 .file-list__header-row {
   display: grid;
   padding: 0;
+  padding-right: 17px; /* Matches FixedSizeList's always-reserved vertical scrollbar (see
+    VirtualFileTable.tsx's `overflowY: "scroll"` override) so header columns stay aligned with
+    body columns whether or not the list actually needs to scroll. 17px is the standard Windows
+    classic-scrollbar width this Chromium-based (WebView2) app renders. */
   border-bottom: 1px solid var(--border);
   background: var(--bg);
 }

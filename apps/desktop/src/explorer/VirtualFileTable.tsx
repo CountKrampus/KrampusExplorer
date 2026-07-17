@@ -233,6 +233,7 @@ function VirtualFileTable({
             itemCount={entries.length}
             itemSize={ROW_HEIGHT_PX[iconSize]}
             itemData={itemData}
+            style={{ overflowY: "scroll" }}
           >
             {VirtualRow}
           </FixedSizeList>
