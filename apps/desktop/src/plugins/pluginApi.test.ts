@@ -44,6 +44,7 @@ function handlers(): PluginApiHandlers {
     listDirectory: vi.fn().mockResolvedValue([]),
     renameEntry: vi.fn().mockResolvedValue("C:\\new-name.txt"),
     openTerminal: vi.fn().mockResolvedValue(undefined),
+    openElevatedTerminal: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -95,6 +96,7 @@ describe("createPluginApi", () => {
     "renameEntry",
     "registerCommand",
     "openTerminal",
+    "openElevatedTerminal",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -129,7 +131,7 @@ describe("createPluginApi", () => {
     ["fs.list", ["listDirectory"]],
     ["fs.rename", ["renameEntry"]],
     ["commands.register", ["registerCommand"]],
-    ["ui.terminal", ["openTerminal"]],
+    ["ui.terminal", ["openTerminal", "openElevatedTerminal"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -249,5 +251,14 @@ describe("createPluginApi", () => {
     await api.openTerminal?.();
 
     expect(h.openTerminal).toHaveBeenCalledWith();
+  });
+
+  it("openElevatedTerminal calls the handler with no arguments", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["ui.terminal"]), h);
+
+    await api.openElevatedTerminal?.();
+
+    expect(h.openElevatedTerminal).toHaveBeenCalledWith();
   });
 });

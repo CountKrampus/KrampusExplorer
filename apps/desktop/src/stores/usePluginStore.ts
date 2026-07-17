@@ -195,6 +195,8 @@ export const usePluginStore = create<PluginState>((set) => ({
             invoke<DirectoryListing>("get_directory_listing", { path }).then((r) => r.entries),
           renameEntry: (path, newName) => invoke<string>("rename_entry", { path, newName }),
           openTerminal: () => invoke<void>("open_terminal_window", { cwd: getCurrentFolderPath() }),
+          openElevatedTerminal: () =>
+            invoke<void>("open_elevated_terminal_window", { cwd: getCurrentFolderPath() }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.

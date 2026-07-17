@@ -54,6 +54,7 @@ export interface PluginApiHandlers {
   listDirectory: (path: string) => Promise<EntryInfo[]>;
   renameEntry: (path: string, newName: string) => Promise<string>;
   openTerminal: () => Promise<void>;
+  openElevatedTerminal: () => Promise<void>;
 }
 
 /**
@@ -128,6 +129,7 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
   }
   if (has("ui.terminal")) {
     api.openTerminal = () => handlers.openTerminal();
+    api.openElevatedTerminal = () => handlers.openElevatedTerminal();
   }
 
   return api;

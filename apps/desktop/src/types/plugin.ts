@@ -199,4 +199,9 @@ export interface PluginApi {
    * interactive shell with tabs, running as core-app functionality rather than sandboxed plugin
    * code. */
   openTerminal?: () => Promise<void>;
+  /** Present only if the plugin's manifest declares the "ui.terminal" permission. Opens a
+   * SEPARATE, fully elevated (Administrator) terminal window — triggers the Windows UAC
+   * prompt. Elevation applies to the whole window, not individual tabs; the resulting window
+   * is an independent OS process from the main app, not connected to it once open. */
+  openElevatedTerminal?: () => Promise<void>;
 }
