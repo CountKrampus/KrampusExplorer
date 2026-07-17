@@ -61,18 +61,24 @@ pub struct TerminalManager {
 }
 ```
 
-`TerminalManager` lives in Tauri managed state. Spawning a session starts a background
-thread that reads PTY output in a loop and emits it as a Tauri event
-(`terminal-output`, payload `{ sessionId, data }`) to the terminal window as data
-arrives — no waiting for the process to exit.
+`TerminalManager` lives in Tauri managed state. Output delivery reuses this codebase's
+existing streaming pattern (`copy_entry_with_progress`/`move_entry_with_progress`'s
+`tauri::ipc::Channel<TransferProgress>` argument, mirrored on the frontend by
+`fileTransfer.ts`'s `new Channel<TransferProgress>()`) rather than a global
+event-bus + session-id-filter: `terminal_spawn` takes a `Channel<TerminalChunk>`
+argument, and the reader thread it starts holds a clone of that channel, calling
+`channel.send(...)` for each chunk of PTY output as it arrives for the lifetime of the
+session — independent of the fact that the `terminal_spawn` call itself already
+returned. No polling, no global event filtering.
 
 **Tauri commands** (`apps/desktop/src-tauri/src/commands.rs`):
 
 - `open_terminal_window(app: AppHandle)` — creates the second `WebviewWindow` if none
   exists for `"terminal"`, else focuses it.
-- `terminal_spawn(cwd: Option<String>) -> Result<String, String>` — starts a PTY with
-  the default shell (see below), in `cwd` if given else the user's home directory.
-  Returns the new session id.
+- `terminal_spawn(cwd: Option<String>, on_output: Channel<TerminalChunk>) -> Result<String, String>` —
+  starts a PTY with the default shell (see below), in `cwd` if given else the user's
+  home directory; starts the reader thread that streams output on `on_output`. Returns
+  the new session id immediately (doesn't wait for the shell to do anything).
 - `terminal_write(session_id: String, data: String) -> Result<(), String>` — writes
   keystrokes/pasted text to the PTY.
 - `terminal_resize(session_id: String, cols: u16, rows: u16) -> Result<(), String>` —
@@ -107,9 +113,9 @@ renders a `TerminalWindow` root instead of the normal `<App />`.
 - A tab strip (one tab per PTY session) + a "+" button that calls `terminal_spawn`
   with no `cwd` (defaults to home directory) and adds a tab.
 - Each tab mounts its own `Terminal` (xterm.js) instance in a container div. On mount:
-  calls `terminal_spawn`, subscribes to `terminal-output` events filtered by that
-  session's id, writes incoming data into the xterm instance, and wires xterm's
-  `onData` callback to `invoke("terminal_write", { sessionId, data })`.
+  creates a `new Channel<TerminalChunk>()`, sets its `onmessage` to write incoming
+  data into the xterm instance, calls `invoke("terminal_spawn", { cwd, onOutput })`,
+  and wires xterm's `onData` callback to `invoke("terminal_write", { sessionId, data })`.
 - `addon-fit` + a `ResizeObserver` on the container call `terminal_resize` whenever
   the pane size changes.
 - Closing a tab calls `terminal_close` and removes it from the tab list; closing the
