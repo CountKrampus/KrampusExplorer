@@ -43,8 +43,16 @@ api.registerSidebarPanel({
       api.openTerminal();
     });
 
+    const openAdminBtn = document.createElement("button");
+    openAdminBtn.textContent = "Open Terminal (Admin)";
+    openAdminBtn.style.cursor = "pointer";
+    openAdminBtn.addEventListener("click", () => {
+      api.openElevatedTerminal();
+    });
+
     container.appendChild(cwdLabel);
     container.appendChild(openBtn);
+    container.appendChild(openAdminBtn);
 
     return () => {
       unsubscribe?.();
