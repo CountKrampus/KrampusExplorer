@@ -23,7 +23,7 @@ fuller examples covering most of the permissions below:
   beyond `ui.sidebar`), uses `fetch` and `localStorage` directly
 - `examples/plugins/database-browser/` — SQLite and MongoDB browsing via `db.sqlite`/`db.mongo`
 - `examples/plugins/git-integration/` — `git status`/`git log` via `git.read`
-- `examples/plugins/run-command/` — scoped-down "run one command" via `system.exec`
+- `examples/plugins/terminal/` — opens a detached interactive terminal window via `ui.terminal`
 - `examples/plugins/duplicate-finder/` — recursive scan + content hashing via `fs.scan`
 - `examples/plugins/disk-usage-visualizer/` — recursive scan via `fs.scan`
 - `examples/plugins/checksum-verifier/` — MD5/SHA-1/SHA-256 via `fs.scan`
@@ -77,6 +77,7 @@ call, because ungranted methods simply don't exist on the object.
 | `db.mongo` | `api.listMongoDatabases(uri)`, `api.listMongoCollections(uri, dbName)`, `api.queryMongoCollection(uri, dbName, collection, limit)` |
 | `git.read` | `api.gitStatus(repoPath)`, `api.gitLog(repoPath, limit)` |
 | `system.exec` | `api.runCommand(cwd, command)` |
+| `ui.terminal` | `api.openTerminal()` |
 | `fs.scan` | `api.scanDirectory(root)`, `api.hashFiles(paths)`, `api.hashFileAll(path)` |
 | `fs.list` | `api.listDirectory(path)` |
 | `fs.rename` | `api.renameEntry(path, newName)` |
@@ -209,6 +210,12 @@ Both require a `git` executable on `PATH` and fail if `repoPath` isn't inside a 
   the app's own OS permissions. **No sandboxing, no confirmation prompt.** Only grant this
   permission to plugins you trust completely.
 
+### `ui.terminal` methods
+
+- `openTerminal(): Promise<void>` — opens the detached terminal window (creating it if it
+  doesn't exist yet, else focusing the existing one). See "Terminal window" below for what that
+  window actually is.
+
 ### `fs.scan` methods
 
 - `scanDirectory(root: string): Promise<{ path: string; size: number }[]>` — recursively lists
@@ -287,6 +294,29 @@ would run that code with the same trust as any other plugin. Don't add third-par
 A plugin listed here may need backend capabilities newer than whatever app version is actually
 running (the same core-app-vs-plugin gap `docs/releasing.md` describes for the example plugins in
 general) — the marketplace UI has no way to detect or warn about that mismatch.
+
+## Terminal window
+
+`api.openTerminal()` (see `ui.terminal` above) opens a second, detached Tauri window — a real
+interactive terminal with tabs, built on `portable-pty` (Rust) and `xterm.js` (frontend), not
+sandboxed plugin code. This is a deliberate architectural choice: today, every other plugin
+capability renders into a `<div>` inside the main window's own JS context via
+`new Function(...)`. Giving a plugin the ability to open its own detached OS window with raw PTY
+access would be a materially bigger addition to the trust model than anything else in this SDK —
+so instead, the terminal itself is core-app functionality (same tier as Settings or the file
+explorer), and a plugin's only access to it is the one narrow, gated method,
+`api.openTerminal()`.
+
+Practically, this means:
+
+- Only one terminal window exists at a time; calling `openTerminal()` again just focuses it.
+- The window supports multiple tabs, each an independent shell session. Closing the last tab
+  closes the window; closing the window kills every session in it.
+- The shell launched is auto-detected: PowerShell (falling back to `cmd.exe`) on Windows,
+  `$SHELL` (falling back to `/bin/sh`) elsewhere.
+- There's no sandboxing once the window is open — it's a real shell with the app's own OS
+  permissions, the same trust level `system.exec` always had (see `examples/plugins/terminal/`,
+  which is what "Open Terminal" actually is).
 
 ## How entry files execute — and why this matters
 
