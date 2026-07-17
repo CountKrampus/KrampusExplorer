@@ -187,3 +187,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.file-list__row--grid [role="gridcell"].file-list__gridcell--editing {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}

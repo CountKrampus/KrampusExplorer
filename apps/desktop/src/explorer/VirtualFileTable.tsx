@@ -80,7 +80,7 @@ const VirtualRow = memo(function VirtualRow({ index, style, data }: ListChildCom
       onDragLeave={() => data.onDragLeave(entry.path)}
       onDrop={(event) => entry.isDir && data.onDrop(event, entry.path)}
     >
-      <div role="gridcell">
+      <div role="gridcell" className={isRenaming ? "file-list__gridcell--editing" : undefined}>
         {entry.isDir ? "\u{1F4C1} " : "\u{1F4C4} "}
         {isRenaming ? (
           <input
