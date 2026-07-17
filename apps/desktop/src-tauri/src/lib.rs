@@ -61,7 +61,40 @@ pub fn run() {
             commands::terminal_close,
             commands::open_terminal_window,
             commands::take_pending_terminal_cwd,
+            commands::is_elevated,
+            commands::open_elevated_terminal_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Entry point for the elevated-terminal relaunch (see `explorer_terminal::relaunch_elevated_terminal`
+/// and `main.rs`'s `--elevated-terminal` flag). A minimal, separate Tauri app instance whose only
+/// job is opening one fully-elevated terminal window -- it registers only the terminal-related
+/// commands, never loads plugins, and has no access to any of the other app commands (file
+/// explorer, settings, search, etc.), deliberately minimizing what's exposed while running with
+/// admin privileges. Exits when its one window closes (Tauri's default last-window-closed
+/// behavior).
+pub fn run_elevated_terminal(cwd: Option<String>) {
+    tauri::Builder::default()
+        .manage(TerminalManager::new())
+        .manage(PendingTerminalCwd(std::sync::Mutex::new(cwd)))
+        .setup(|app| {
+            let handle = app.handle().clone();
+            if let Err(e) = commands::build_terminal_webview_window(&handle) {
+                eprintln!("Could not open elevated terminal window: {e}");
+                std::process::exit(1);
+            }
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::terminal_spawn,
+            commands::terminal_write,
+            commands::terminal_resize,
+            commands::terminal_close,
+            commands::take_pending_terminal_cwd,
+            commands::is_elevated,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running elevated terminal process");
 }

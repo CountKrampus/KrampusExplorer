@@ -366,17 +366,7 @@ pub async fn open_terminal_window(
 
     *pending_cwd.0.lock().unwrap() = cwd;
 
-    let window = tauri::WebviewWindowBuilder::new(
-        &app,
-        "terminal",
-        tauri::WebviewUrl::App("index.html".into()),
-    )
-    .title("Krampus Explorer — Terminal")
-    .inner_size(900.0, 600.0)
-    .min_inner_size(400.0, 300.0)
-    .decorations(false)
-    .build()
-    .map_err(|e| e.to_string())?;
+    let window = build_terminal_webview_window(&app)?;
 
     let app_handle = app.clone();
     window.on_window_event(move |event| {
@@ -388,4 +378,33 @@ pub async fn open_terminal_window(
     });
 
     Ok(())
+}
+
+/// Builds the detached terminal window itself -- shared between `open_terminal_window` (the
+/// normal, non-elevated path) and `run_elevated_terminal` in lib.rs (the elevated relaunch's
+/// entire purpose), so the two can't drift apart.
+pub fn build_terminal_webview_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> {
+    tauri::WebviewWindowBuilder::new(app, "terminal", tauri::WebviewUrl::App("index.html".into()))
+        .title("Krampus Explorer — Terminal")
+        .inner_size(900.0, 600.0)
+        .min_inner_size(400.0, 300.0)
+        .decorations(false)
+        .build()
+        .map_err(|e| e.to_string())
+}
+
+/// True if this process is running elevated (Administrator). Called by the terminal window on
+/// mount to decide whether to show "(Administrator)" in its title.
+#[tauri::command]
+pub fn is_elevated() -> bool {
+    explorer_terminal::is_elevated()
+}
+
+/// Relaunches the app elevated (triggering the Windows UAC prompt), dedicated to opening a
+/// fully-elevated terminal window. See `explorer_terminal::relaunch_elevated_terminal` and the
+/// design spec for why this is a separate process rather than an elevated shell inside the
+/// existing (non-elevated) terminal window.
+#[tauri::command]
+pub fn open_elevated_terminal_window(cwd: Option<String>) -> Result<(), String> {
+    explorer_terminal::relaunch_elevated_terminal(cwd.as_deref())
 }
