@@ -98,7 +98,13 @@ const FileRow = memo(function FileRow({
         {entry.isDir ? "\u{1F4C1} " : "\u{1F4C4} "}
         {isRenaming ? (
           <input
-            ref={renameInputRef}
+            ref={(el) => {
+              (renameInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+              if (el) {
+                el.focus();
+                el.select();
+              }
+            }}
             className="file-list__rename-input"
             value={renameValue}
             onClick={(event) => event.stopPropagation()}

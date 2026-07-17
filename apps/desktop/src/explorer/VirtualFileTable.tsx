@@ -84,7 +84,13 @@ const VirtualRow = memo(function VirtualRow({ index, style, data }: ListChildCom
         {entry.isDir ? "\u{1F4C1} " : "\u{1F4C4} "}
         {isRenaming ? (
           <input
-            ref={data.renameInputRef}
+            ref={(el) => {
+              (data.renameInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+              if (el) {
+                el.focus();
+                el.select();
+              }
+            }}
             className="file-list__rename-input"
             value={data.renameValue}
             onClick={(event) => event.stopPropagation()}
@@ -224,7 +230,7 @@ function VirtualFileTable({
         <SortHeaderCell label="Type" field="type" sortField={sortField} sortDirection={sortDirection} setSort={setSort} />
         <SortHeaderCell label="Modified" field="modified" sortField={sortField} sortDirection={sortDirection} setSort={setSort} />
       </div>
-      <div ref={sizeRef} className="file-list__virtual-body">
+      <div ref={sizeRef} role="rowgroup" className="file-list__virtual-body">
         {size.height > 0 && (
           <FixedSizeList
             ref={listRef}

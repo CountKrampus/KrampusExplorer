@@ -246,15 +246,24 @@ function FileList() {
 
   const beginRename = useCallback(
     (path: string) => {
-      const entry = entries?.find((e) => e.path === path);
-      if (!entry) return;
+      const index = sortedEntries.findIndex((e) => e.path === path);
+      if (index === -1) return;
+      const entry = sortedEntries[index];
       pendingFocusPathRef.current = null;
       setRenamingPath(path);
       setRenameValue(entry.name);
       renameValueRef.current = entry.name;
       setMenu(null);
+      // If the row isn't currently mounted (only possible in the virtualized large-folder path),
+      // scroll it into view so it actually renders -- otherwise renamingPath would be set with no
+      // <input> anywhere in the DOM to type into. Doesn't touch pendingFocusPathRef (that system
+      // is for focusing the ROW itself, not the rename <input> -- see the ref callback on the
+      // rename <input> in FileTable.tsx/VirtualFileTable.tsx, which self-focuses on mount instead).
+      if (!rowRefs.current.has(path)) {
+        listRef.current?.scrollToItem(index);
+      }
     },
-    [entries],
+    [sortedEntries],
   );
 
   const onRenameChange = useCallback((value: string) => {
