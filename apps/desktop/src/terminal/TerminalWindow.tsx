@@ -7,6 +7,10 @@ import TitleBar from "../components/TitleBar";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { useResolvedTheme } from "../hooks/useResolvedTheme";
 import { addTab, initialTabs, removeTab, type TerminalTabState } from "./tabs";
+import "@xterm/xterm/css/xterm.css";
+import "../styles/theme.css";
+import "../styles/global.css";
+import "./TerminalWindow.css";
 
 /** Label shown in the tab strip for a given tab's shell — falls back to a generic "Shell N"
  * label for the default/auto-detected shell, since we don't know which one that resolved to
@@ -16,10 +20,6 @@ function tabLabel(shell: string | null, index: number): string {
   if (shell === "cmd.exe") return "CMD";
   return `Shell ${index + 1}`;
 }
-import "@xterm/xterm/css/xterm.css";
-import "../styles/theme.css";
-import "../styles/global.css";
-import "./TerminalWindow.css";
 
 interface TerminalChunk {
   data: string;
@@ -114,6 +114,18 @@ function TerminalWindow() {
     });
   }, []);
 
+  const [isElevated, setIsElevated] = useState(false);
+
+  useEffect(() => {
+    invoke<boolean>("is_elevated")
+      .then(setIsElevated)
+      .catch(() => {
+        // Default to false (not elevated) if the check itself fails for some reason -- the
+        // title label is cosmetic, not a security boundary, so failing closed here just means
+        // a possibly-misleading title, not a real risk.
+      });
+  }, []);
+
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
   }, [resolvedTheme]);
@@ -152,7 +164,13 @@ function TerminalWindow() {
 
   return (
     <div className="terminal-window">
-      <TitleBar title="Krampus Explorer — Terminal" />
+      <TitleBar
+        title={
+          isElevated
+            ? "Krampus Explorer — Terminal (Administrator)"
+            : "Krampus Explorer — Terminal"
+        }
+      />
       <div className="terminal-window__tabs">
         {tabState.tabs.map((tab, index) => (
           <div
