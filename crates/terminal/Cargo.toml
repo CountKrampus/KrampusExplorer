@@ -1,0 +1,12 @@
+[package]
+name = "explorer-terminal"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "explorer_terminal"
+path = "src/lib.rs"
+
+[dependencies]
+portable-pty = "0.8"

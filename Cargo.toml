@@ -7,6 +7,7 @@ members = [
     "crates/preview",
     "crates/plugins",
     "crates/settings",
+    "crates/terminal",
     "apps/desktop/src-tauri",
 ]
 
