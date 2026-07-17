@@ -383,7 +383,9 @@ pub async fn open_terminal_window(
 /// Builds the detached terminal window itself -- shared between `open_terminal_window` (the
 /// normal, non-elevated path) and `run_elevated_terminal` in lib.rs (the elevated relaunch's
 /// entire purpose), so the two can't drift apart.
-pub fn build_terminal_webview_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> {
+pub fn build_terminal_webview_window(
+    app: &tauri::AppHandle,
+) -> Result<tauri::WebviewWindow, String> {
     tauri::WebviewWindowBuilder::new(app, "terminal", tauri::WebviewUrl::App("index.html".into()))
         .title("Krampus Explorer — Terminal")
         .inner_size(900.0, 600.0)

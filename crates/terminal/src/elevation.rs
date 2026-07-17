@@ -46,8 +46,8 @@ mod windows_impl {
     pub fn relaunch_elevated_terminal(cwd: Option<&str>) -> Result<(), String> {
         use windows_sys::Win32::UI::Shell::ShellExecuteW;
 
-        let exe = std::env::current_exe()
-            .map_err(|e| format!("Could not find own executable: {e}"))?;
+        let exe =
+            std::env::current_exe().map_err(|e| format!("Could not find own executable: {e}"))?;
         let exe_str = exe.to_string_lossy().to_string();
 
         let mut params = "--elevated-terminal".to_string();
@@ -155,7 +155,7 @@ mod stub {
     }
 }
 
-#[cfg(windows)]
-pub use windows_impl::{is_elevated, relaunch_elevated_terminal};
 #[cfg(not(windows))]
 pub use stub::{is_elevated, relaunch_elevated_terminal};
+#[cfg(windows)]
+pub use windows_impl::{is_elevated, relaunch_elevated_terminal};
