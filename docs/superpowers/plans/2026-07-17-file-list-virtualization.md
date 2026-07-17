@@ -25,11 +25,14 @@ Full design: `docs/superpowers/specs/2026-07-17-file-list-virtualization-design.
 
 - [ ] **Step 1: Install the package**
 
-Run: `cd apps/desktop && npm install react-window@^1.8.11`
+Run: `cd apps/desktop && npm install react-window@^1.8.11 && npm install --save-dev @types/react-window@^1`
 
-Expected: `apps/desktop/package.json`'s `"dependencies"` gains a `"react-window": "^1.8.11"` line,
-and `apps/desktop/package-lock.json` updates. `react-window` ships its own TypeScript types
-(no separate `@types/react-window` package needed since v1.8.10+).
+Expected: `apps/desktop/package.json`'s `"dependencies"` gains a `"react-window": "^1.8.11"` line
+and `"devDependencies"` gains `"@types/react-window": "^1.8.8"`; `apps/desktop/package-lock.json`
+updates. (Correction from an earlier draft of this plan: `react-window` itself ships only Flow
+type stubs, not TypeScript `.d.ts` files — without `@types/react-window`, `FixedSizeList` and
+`ListChildComponentProps` silently resolve to `any` with no compile-time checking at all. The
+separate types package is required.)
 
 - [ ] **Step 2: Verify types resolve**
 
@@ -47,6 +50,10 @@ git commit -m "Add react-window for file list virtualization"
 ---
 
 ### Task 2: Virtualization threshold and row-height constants
+
+**Task 1 status: already implemented and reviewed as of this plan's current state** (commits
+`2527904` and `004e0fb`). `react-window@1.8.11` and `@types/react-window@^1.8.8` are both
+installed and confirmed to provide real TypeScript type-checking (not `any`).
 
 **Files:**
 - Create: `apps/desktop/src/explorer/virtualization.ts`
