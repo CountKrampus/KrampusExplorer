@@ -46,3 +46,12 @@
 .search-results-message--error {
   color: var(--danger);
 }
+
+.search-results__truncated-banner {
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}

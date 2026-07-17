@@ -3,6 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { useExplorerStore } from "./useExplorerStore";
 import { useToastStore } from "./useToastStore";
 
+/** Must match crates/search/src/query.rs's SEARCH_RESULT_CAP -- kept as a separate constant
+ * because there's no shared-constant mechanism across the Rust/TS boundary in this codebase. */
+export const SEARCH_RESULT_CAP = 500;
+
 export interface SearchFilters {
   name: string;
   fileType: "file" | "folder" | "";
