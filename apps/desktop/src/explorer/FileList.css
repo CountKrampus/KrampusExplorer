@@ -147,3 +147,39 @@
   cursor: pointer;
   padding: 0;
 }
+
+.file-list--virtual {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.file-list__header-row {
+  display: grid;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.file-list__header-row [role="columnheader"] {
+  padding: 6px 10px;
+}
+
+.file-list__virtual-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.file-list__row--grid {
+  align-items: center;
+  box-sizing: border-box;
+  border-bottom: none;
+}
+
+.file-list__row--grid [role="gridcell"] {
+  padding: 4px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
