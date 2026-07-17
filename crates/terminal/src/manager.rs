@@ -1,4 +1,4 @@
-use crate::shell::shell_candidates;
+use crate::shell::shell_candidates_with_override;
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -33,13 +33,17 @@ impl TerminalManager {
         Self::default()
     }
 
-    /// Starts a new PTY running the first working shell from `shell_candidates()`, in `cwd` if
-    /// given (else the shell's own default, typically the user's home directory). `on_output` is
-    /// called from a dedicated reader thread with each chunk of output as it arrives — for the
-    /// lifetime of the session, independent of this function having already returned.
+    /// Starts a new PTY running the first working shell from `shell_candidates_with_override()`,
+    /// in `cwd` if given (else the shell's own default, typically the user's home directory).
+    /// `shell` requests a specific shell executable (e.g. "cmd.exe" from the terminal window's
+    /// "+ CMD" button) to try before the auto-detected candidates; pass `None` to just use the
+    /// auto-detected default. `on_output` is called from a dedicated reader thread with each
+    /// chunk of output as it arrives — for the lifetime of the session, independent of this
+    /// function having already returned.
     pub fn spawn(
         &self,
         cwd: Option<&str>,
+        shell: Option<&str>,
         on_output: impl Fn(Vec<u8>) + Send + 'static,
     ) -> Result<String, String> {
         let pty_system = native_pty_system();
@@ -54,7 +58,7 @@ impl TerminalManager {
 
         let mut last_error = "no shell candidates".to_string();
         let mut spawned = None;
-        for shell in shell_candidates() {
+        for shell in shell_candidates_with_override(shell) {
             let mut cmd = CommandBuilder::new(&shell);
             if let Some(cwd) = cwd {
                 cmd.cwd(cwd);
@@ -181,7 +185,7 @@ mod tests {
         let manager = TerminalManager::new();
         let (on_output, _buf) = collect_output();
 
-        let id = manager.spawn(None, on_output).unwrap();
+        let id = manager.spawn(None, None, on_output).unwrap();
 
         assert!(!id.is_empty());
         manager.close(&id).unwrap();
@@ -191,7 +195,7 @@ mod tests {
     fn write_sends_input_and_output_streams_back() {
         let manager = TerminalManager::new();
         let (on_output, buf) = collect_output();
-        let id = manager.spawn(None, on_output).unwrap();
+        let id = manager.spawn(None, None, on_output).unwrap();
 
         #[cfg(windows)]
         let command = "echo hello-terminal-test\r\n";
@@ -213,10 +217,39 @@ mod tests {
     }
 
     #[test]
+    fn spawn_honors_a_requested_shell_override() {
+        let manager = TerminalManager::new();
+        let (on_output, buf) = collect_output();
+        #[cfg(windows)]
+        let requested = "cmd.exe";
+        #[cfg(not(windows))]
+        let requested = "/bin/sh";
+        let id = manager.spawn(None, Some(requested), on_output).unwrap();
+
+        #[cfg(windows)]
+        let command = "echo requested-shell-test\r\n";
+        #[cfg(not(windows))]
+        let command = "echo requested-shell-test\n";
+        manager.write(&id, command).unwrap();
+
+        let mut seen = String::new();
+        for _ in 0..50 {
+            thread::sleep(Duration::from_millis(100));
+            seen = String::from_utf8_lossy(&buf.lock().unwrap()).to_string();
+            if seen.contains("requested-shell-test") {
+                break;
+            }
+        }
+        assert!(seen.contains("requested-shell-test"), "got: {seen}");
+
+        manager.close(&id).unwrap();
+    }
+
+    #[test]
     fn close_stops_the_session_and_a_second_close_errors() {
         let manager = TerminalManager::new();
         let (on_output, _buf) = collect_output();
-        let id = manager.spawn(None, on_output).unwrap();
+        let id = manager.spawn(None, None, on_output).unwrap();
 
         manager.close(&id).unwrap();
 
@@ -241,7 +274,7 @@ mod tests {
     fn resize_an_active_session_succeeds() {
         let manager = TerminalManager::new();
         let (on_output, _buf) = collect_output();
-        let id = manager.spawn(None, on_output).unwrap();
+        let id = manager.spawn(None, None, on_output).unwrap();
 
         assert!(manager.resize(&id, 120, 40).is_ok());
 
@@ -253,8 +286,8 @@ mod tests {
         let manager = TerminalManager::new();
         let (on_output_a, _) = collect_output();
         let (on_output_b, _) = collect_output();
-        let id_a = manager.spawn(None, on_output_a).unwrap();
-        let id_b = manager.spawn(None, on_output_b).unwrap();
+        let id_a = manager.spawn(None, None, on_output_a).unwrap();
+        let id_b = manager.spawn(None, None, on_output_b).unwrap();
 
         manager.close_all();
 

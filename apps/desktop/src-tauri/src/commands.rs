@@ -268,10 +268,11 @@ pub struct TerminalChunk {
 pub fn terminal_spawn(
     manager: tauri::State<TerminalManager>,
     cwd: Option<String>,
+    shell: Option<String>,
     on_output: Channel<TerminalChunk>,
 ) -> Result<String, String> {
     let leftover = std::sync::Mutex::new(Vec::<u8>::new());
-    manager.spawn(cwd.as_deref(), move |bytes| {
+    manager.spawn(cwd.as_deref(), shell.as_deref(), move |bytes| {
         let mut buf = leftover.lock().unwrap();
         buf.extend_from_slice(&bytes);
 

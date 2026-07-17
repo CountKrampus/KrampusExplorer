@@ -7,6 +7,15 @@ import TitleBar from "../components/TitleBar";
 import { useSettingsStore } from "../stores/useSettingsStore";
 import { useResolvedTheme } from "../hooks/useResolvedTheme";
 import { addTab, initialTabs, removeTab, type TerminalTabState } from "./tabs";
+
+/** Label shown in the tab strip for a given tab's shell — falls back to a generic "Shell N"
+ * label for the default/auto-detected shell, since we don't know which one that resolved to
+ * without asking the backend. */
+function tabLabel(shell: string | null, index: number): string {
+  if (shell === "powershell.exe") return "PowerShell";
+  if (shell === "cmd.exe") return "CMD";
+  return `Shell ${index + 1}`;
+}
 import "@xterm/xterm/css/xterm.css";
 import "../styles/theme.css";
 import "../styles/global.css";
@@ -18,9 +27,10 @@ interface TerminalChunk {
 
 interface TerminalTabProps {
   cwd: string | null;
+  shell: string | null;
 }
 
-function TerminalTabView({ cwd }: TerminalTabProps) {
+function TerminalTabView({ cwd, shell }: TerminalTabProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,7 +58,7 @@ function TerminalTabView({ cwd }: TerminalTabProps) {
       if (!disposed) term.write(chunk.data);
     };
 
-    invoke<string>("terminal_spawn", { cwd, onOutput })
+    invoke<string>("terminal_spawn", { cwd, shell, onOutput })
       .then((id) => {
         if (cancelled) {
           void invoke("terminal_close", { sessionId: id });
@@ -93,7 +103,7 @@ function TerminalWindow() {
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const accentColor = useSettingsStore((state) => state.accentColor);
   const [tabState, setTabState] = useState<TerminalTabState>(initialTabs);
-  const [activeTab, setActiveTab] = useState(tabState.tabs[0]);
+  const [activeTab, setActiveTab] = useState(tabState.tabs[0].key);
   const [initialCwd, setInitialCwd] = useState<string | null>(null);
   const [initialCwdLoaded, setInitialCwdLoaded] = useState(false);
 
@@ -116,11 +126,14 @@ function TerminalWindow() {
     void loadSettings();
   }, [loadSettings]);
 
-  const handleAddTab = useCallback(() => {
-    const next = addTab(tabState);
-    setTabState(next);
-    setActiveTab(next.tabs[next.tabs.length - 1]);
-  }, [tabState]);
+  const handleAddTab = useCallback(
+    (shell: string | null = null) => {
+      const next = addTab(tabState, shell);
+      setTabState(next);
+      setActiveTab(next.tabs[next.tabs.length - 1].key);
+    },
+    [tabState],
+  );
 
   const handleCloseTab = useCallback(
     (key: string) => {
@@ -129,7 +142,9 @@ function TerminalWindow() {
       if (next.tabs.length === 0) {
         void getCurrentWindow().close();
       } else {
-        setActiveTab((current) => (current === key ? next.tabs[next.tabs.length - 1] : current));
+        setActiveTab((current) =>
+          current === key ? next.tabs[next.tabs.length - 1].key : current,
+        );
       }
     },
     [tabState],
@@ -139,40 +154,58 @@ function TerminalWindow() {
     <div className="terminal-window">
       <TitleBar title="Krampus Explorer — Terminal" />
       <div className="terminal-window__tabs">
-        {tabState.tabs.map((key, index) => (
+        {tabState.tabs.map((tab, index) => (
           <div
-            key={key}
-            className={`terminal-window__tab ${key === activeTab ? "terminal-window__tab--active" : ""}`}
+            key={tab.key}
+            className={`terminal-window__tab ${tab.key === activeTab ? "terminal-window__tab--active" : ""}`}
           >
-            <button type="button" onClick={() => setActiveTab(key)}>
-              Shell {index + 1}
+            <button type="button" onClick={() => setActiveTab(tab.key)}>
+              {tabLabel(tab.shell, index)}
             </button>
             <button
               type="button"
               className="terminal-window__tab-close"
               aria-label="Close tab"
-              onClick={() => handleCloseTab(key)}
+              onClick={() => handleCloseTab(tab.key)}
             >
               &#x2715;
             </button>
           </div>
         ))}
-        <button type="button" className="terminal-window__new-tab" aria-label="New tab" onClick={handleAddTab}>
-          +
+        <button
+          type="button"
+          className="terminal-window__new-tab"
+          aria-label="New PowerShell tab"
+          title="New PowerShell tab"
+          onClick={() => handleAddTab("powershell.exe")}
+        >
+          + PS
+        </button>
+        <button
+          type="button"
+          className="terminal-window__new-tab"
+          aria-label="New Command Prompt tab"
+          title="New Command Prompt tab"
+          onClick={() => handleAddTab("cmd.exe")}
+        >
+          + CMD
         </button>
       </div>
       <div className="terminal-window__body">
         {initialCwdLoaded &&
-          tabState.tabs.map((key) => (
+          tabState.tabs.map((tab) => (
             // Hidden via CSS rather than unmounted when not the active tab — matches
             // PluginPanel's pattern in ../sidebar/PluginPanel.tsx: a real PTY session is running
             // underneath, and unmounting would kill it just for switching tabs.
             <div
-              key={key}
+              key={tab.key}
               className="terminal-window__pane"
-              style={key === activeTab ? undefined : { display: "none" }}
+              style={tab.key === activeTab ? undefined : { display: "none" }}
             >
-              <TerminalTabView cwd={key === tabState.tabs[0] ? initialCwd : null} />
+              <TerminalTabView
+                cwd={tab.key === tabState.tabs[0].key ? initialCwd : null}
+                shell={tab.shell}
+              />
             </div>
           ))}
       </div>

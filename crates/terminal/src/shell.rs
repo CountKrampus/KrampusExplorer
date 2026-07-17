@@ -6,6 +6,19 @@ pub fn shell_candidates() -> Vec<String> {
     shell_candidates_from_env(std::env::var("SHELL").ok(), std::env::var("COMSPEC").ok())
 }
 
+/// Same priority list as `shell_candidates()`, except `requested` (if given) is tried first —
+/// e.g. a tab opened via the "+ CMD" button in the terminal window. Falls through to the normal
+/// auto-detected candidates if the requested shell isn't found/fails to spawn, rather than
+/// erroring outright.
+pub fn shell_candidates_with_override(requested: Option<&str>) -> Vec<String> {
+    let mut candidates = Vec::new();
+    if let Some(shell) = requested {
+        candidates.push(shell.to_string());
+    }
+    candidates.extend(shell_candidates());
+    candidates
+}
+
 fn shell_candidates_from_env(
     shell_var: Option<String>,
     comspec_var: Option<String>,
@@ -55,5 +68,18 @@ mod tests {
     fn unix_falls_back_to_bin_sh() {
         let candidates = shell_candidates_from_env(None, None);
         assert_eq!(candidates, vec!["/bin/sh"]);
+    }
+
+    #[test]
+    fn override_is_tried_before_the_normal_candidates() {
+        let candidates = shell_candidates_with_override(Some("cmd.exe"));
+
+        assert_eq!(candidates[0], "cmd.exe");
+        assert_eq!(candidates.len(), 1 + shell_candidates().len());
+    }
+
+    #[test]
+    fn no_override_is_just_the_normal_candidates() {
+        assert_eq!(shell_candidates_with_override(None), shell_candidates());
     }
 }
