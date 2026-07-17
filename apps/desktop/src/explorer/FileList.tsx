@@ -165,6 +165,7 @@ function FileList() {
   // click and defeat FileRow's memoization (see the comment on FileRow above).
   const handleRowClick = useCallback(
     (path: string, index: number, event: React.MouseEvent) => {
+      pendingFocusPathRef.current = null;
       if (event.shiftKey) {
         const state = useExplorerStore.getState();
         const tab = state.tabs.find((t) => t.id === state.activeTabId);
@@ -245,6 +246,7 @@ function FileList() {
     (path: string) => {
       const entry = entries?.find((e) => e.path === path);
       if (!entry) return;
+      pendingFocusPathRef.current = null;
       setRenamingPath(path);
       setRenameValue(entry.name);
       renameValueRef.current = entry.name;
@@ -339,6 +341,7 @@ function FileList() {
         return;
       }
       if (event.key === "Escape") {
+        pendingFocusPathRef.current = null;
         clearSelection();
         return;
       }
