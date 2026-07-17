@@ -104,12 +104,10 @@ function TerminalWindow() {
   }, [loadSettings]);
 
   const handleAddTab = useCallback(() => {
-    setTabState((state) => {
-      const next = addTab(state);
-      setActiveTab(next.tabs[next.tabs.length - 1]);
-      return next;
-    });
-  }, []);
+    const next = addTab(tabState);
+    setTabState(next);
+    setActiveTab(next.tabs[next.tabs.length - 1]);
+  }, [tabState]);
 
   const handleCloseTab = useCallback(
     (key: string) => {
