@@ -2,19 +2,15 @@ import { describe, expect, it } from "vitest";
 import { isTerminalWindow } from "./windowRouting";
 
 describe("isTerminalWindow", () => {
-  it("is true when the window query param is 'terminal'", () => {
-    expect(isTerminalWindow("?window=terminal")).toBe(true);
+  it("is true for the 'terminal' window label", () => {
+    expect(isTerminalWindow("terminal")).toBe(true);
   });
 
-  it("is false with no query string", () => {
+  it("is false for the main window's label", () => {
+    expect(isTerminalWindow("main")).toBe(false);
+  });
+
+  it("is false for an empty label", () => {
     expect(isTerminalWindow("")).toBe(false);
-  });
-
-  it("is false for an unrelated window param", () => {
-    expect(isTerminalWindow("?window=settings")).toBe(false);
-  });
-
-  it("is true alongside other query params", () => {
-    expect(isTerminalWindow("?cwd=C%3A%5Cfoo&window=terminal")).toBe(true);
   });
 });

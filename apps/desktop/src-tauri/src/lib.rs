@@ -1,5 +1,6 @@
 mod commands;
 
+use commands::PendingTerminalCwd;
 use explorer_terminal::TerminalManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -8,6 +9,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_process::init())
         .manage(TerminalManager::new())
+        .manage(PendingTerminalCwd(std::sync::Mutex::new(None)))
         .setup(|app| {
             #[cfg(desktop)]
             {
@@ -58,6 +60,7 @@ pub fn run() {
             commands::terminal_resize,
             commands::terminal_close,
             commands::open_terminal_window,
+            commands::take_pending_terminal_cwd,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

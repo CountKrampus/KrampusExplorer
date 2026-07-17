@@ -328,30 +328,54 @@ pub fn terminal_close(
     manager.close(&session_id)
 }
 
+/// Holds the folder the terminal window's first tab should open in, set by
+/// `open_terminal_window` right before creating the window and consumed once by the frontend
+/// via `take_pending_terminal_cwd`. A managed-state handoff, not a URL query string: passing
+/// data through `WebviewUrl::App`'s `PathBuf` doesn't reliably preserve a real query string
+/// (it isn't a URL type), so `?cwd=...` was never actually visible to the window's own
+/// `window.location.search` — this sidesteps that entirely.
+pub struct PendingTerminalCwd(pub std::sync::Mutex<Option<String>>);
+
+#[tauri::command]
+pub fn take_pending_terminal_cwd(state: tauri::State<PendingTerminalCwd>) -> Option<String> {
+    state.0.lock().unwrap().take()
+}
+
 /// Creates the detached terminal window if it doesn't exist yet, else focuses the existing one.
 /// `cwd` (the folder open in the explorer when the plugin's "Open Terminal" button was clicked)
-/// is passed through the window URL so the terminal's first tab opens there.
+/// is stashed in `PendingTerminalCwd` for the new window's first tab to pick up — see that
+/// struct's doc comment for why this isn't passed via the window URL. Routing which React root
+/// a window renders (`isTerminalWindow`) uses the window's own label instead of a URL query
+/// string for the same reason.
+///
+/// This command is `async` specifically because `WebviewWindowBuilder::build()` deadlocks when
+/// called from a synchronous command handler on Windows (a known Tauri/WRY issue — sync
+/// commands don't run on a thread that can safely pump the message loop WebView2's async
+/// initialization needs). Async commands don't have this problem.
 #[tauri::command]
-pub fn open_terminal_window(app: tauri::AppHandle, cwd: Option<String>) -> Result<(), String> {
+pub async fn open_terminal_window(
+    app: tauri::AppHandle,
+    pending_cwd: tauri::State<'_, PendingTerminalCwd>,
+    cwd: Option<String>,
+) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("terminal") {
         window.set_focus().map_err(|e| e.to_string())?;
         return Ok(());
     }
 
-    let mut url = "index.html?window=terminal".to_string();
-    if let Some(cwd) = cwd {
-        url.push_str("&cwd=");
-        url.push_str(&urlencoding_encode(&cwd));
-    }
+    *pending_cwd.0.lock().unwrap() = cwd;
 
-    let window =
-        tauri::WebviewWindowBuilder::new(&app, "terminal", tauri::WebviewUrl::App(url.into()))
-            .title("Krampus Explorer — Terminal")
-            .inner_size(900.0, 600.0)
-            .min_inner_size(400.0, 300.0)
-            .decorations(false)
-            .build()
-            .map_err(|e| e.to_string())?;
+    let window = tauri::WebviewWindowBuilder::new(
+        &app,
+        "terminal",
+        tauri::WebviewUrl::App("index.html".into()),
+    )
+    .title("Krampus Explorer — Terminal")
+    .inner_size(900.0, 600.0)
+    .min_inner_size(400.0, 300.0)
+    .decorations(false)
+    .build()
+    .map_err(|e| e.to_string())?;
 
     let app_handle = app.clone();
     window.on_window_event(move |event| {
@@ -363,19 +387,4 @@ pub fn open_terminal_window(app: tauri::AppHandle, cwd: Option<String>) -> Resul
     });
 
     Ok(())
-}
-
-/// Minimal percent-encoding for the one thing a folder path needs escaped in a URL query
-/// string: no external crate pulled in just for this.
-fn urlencoding_encode(value: &str) -> String {
-    let mut out = String::with_capacity(value.len());
-    for byte in value.bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(byte as char)
-            }
-            _ => out.push_str(&format!("%{byte:02X}")),
-        }
-    }
-    out
 }

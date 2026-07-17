@@ -31,11 +31,17 @@ function TerminalTabView({ cwd }: TerminalTabProps) {
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(container);
-    fitAddon.fit();
 
     let sessionId: string | null = null;
     let cancelled = false;
     let disposed = false;
+
+    // fitAddon.fit() needs the container to have a real layout size, which it doesn't have
+    // synchronously right after term.open() — the browser hasn't painted yet. Deferring to the
+    // next animation frame avoids xterm's renderer throwing on undefined dimensions.
+    const fitFrame = requestAnimationFrame(() => {
+      if (!disposed) fitAddon.fit();
+    });
 
     const onOutput = new Channel<TerminalChunk>();
     onOutput.onmessage = (chunk) => {
@@ -70,6 +76,7 @@ function TerminalTabView({ cwd }: TerminalTabProps) {
     return () => {
       cancelled = true;
       disposed = true;
+      cancelAnimationFrame(fitFrame);
       resizeObserver.disconnect();
       dataDisposable.dispose();
       if (sessionId) void invoke("terminal_close", { sessionId });
@@ -87,9 +94,15 @@ function TerminalWindow() {
   const accentColor = useSettingsStore((state) => state.accentColor);
   const [tabState, setTabState] = useState<TerminalTabState>(initialTabs);
   const [activeTab, setActiveTab] = useState(tabState.tabs[0]);
-  const initialCwdRef = useRef<string | null>(
-    new URLSearchParams(window.location.search).get("cwd"),
-  );
+  const [initialCwd, setInitialCwd] = useState<string | null>(null);
+  const [initialCwdLoaded, setInitialCwdLoaded] = useState(false);
+
+  useEffect(() => {
+    invoke<string | null>("take_pending_terminal_cwd").then((cwd) => {
+      setInitialCwd(cwd);
+      setInitialCwdLoaded(true);
+    });
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = resolvedTheme;
@@ -149,18 +162,19 @@ function TerminalWindow() {
         </button>
       </div>
       <div className="terminal-window__body">
-        {tabState.tabs.map((key) => (
-          // Hidden via CSS rather than unmounted when not the active tab — matches
-          // PluginPanel's pattern in ../sidebar/PluginPanel.tsx: a real PTY session is running
-          // underneath, and unmounting would kill it just for switching tabs.
-          <div
-            key={key}
-            className="terminal-window__pane"
-            style={key === activeTab ? undefined : { display: "none" }}
-          >
-            <TerminalTabView cwd={key === tabState.tabs[0] ? initialCwdRef.current : null} />
-          </div>
-        ))}
+        {initialCwdLoaded &&
+          tabState.tabs.map((key) => (
+            // Hidden via CSS rather than unmounted when not the active tab — matches
+            // PluginPanel's pattern in ../sidebar/PluginPanel.tsx: a real PTY session is running
+            // underneath, and unmounting would kill it just for switching tabs.
+            <div
+              key={key}
+              className="terminal-window__pane"
+              style={key === activeTab ? undefined : { display: "none" }}
+            >
+              <TerminalTabView cwd={key === tabState.tabs[0] ? initialCwd : null} />
+            </div>
+          ))}
       </div>
     </div>
   );

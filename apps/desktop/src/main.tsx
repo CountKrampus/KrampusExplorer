@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import { isTerminalWindow } from "./windowRouting";
 
@@ -9,7 +10,7 @@ import { isTerminalWindow } from "./windowRouting";
 // window ever needs it.
 const TerminalWindow = lazy(() => import("./terminal/TerminalWindow"));
 
-const Root = isTerminalWindow(window.location.search) ? TerminalWindow : App;
+const Root = isTerminalWindow(getCurrentWindow().label) ? TerminalWindow : App;
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
