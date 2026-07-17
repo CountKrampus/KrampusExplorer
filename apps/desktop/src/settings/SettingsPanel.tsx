@@ -6,6 +6,7 @@ import { usePluginStore } from "../stores/usePluginStore";
 import { useUpdateStore } from "../stores/useUpdateStore";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import PluginMarketplace from "./PluginMarketplace";
+import WipPlugins from "./WipPlugins";
 import "./SettingsPanel.css";
 
 const SHORTCUTS: [string, string][] = [
@@ -49,6 +50,7 @@ function SettingsPanelBody() {
   const installUpdate = useUpdateStore((state) => state.installUpdate);
   const [appVersion, setAppVersion] = useState<string | null>(null);
   const [marketplaceOpen, setMarketplaceOpen] = useState(false);
+  const [wipPluginsOpen, setWipPluginsOpen] = useState(false);
 
   useEffect(() => {
     getVersion()
@@ -213,6 +215,14 @@ function SettingsPanelBody() {
             {marketplaceOpen ? "Hide Marketplace" : "Browse Marketplace"}
           </button>
           {marketplaceOpen && <PluginMarketplace />}
+          <button
+            type="button"
+            className="settings-panel__check-updates"
+            onClick={() => setWipPluginsOpen((open) => !open)}
+          >
+            {wipPluginsOpen ? "Hide Local Plugins (dev)" : "Local Plugins (dev)"}
+          </button>
+          {wipPluginsOpen && <WipPlugins />}
         </section>
 
         <section className="settings-panel__section">

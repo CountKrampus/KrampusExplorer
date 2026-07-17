@@ -181,6 +181,16 @@ pub fn install_plugin(plugin_id: String, files: Vec<PluginFile>) -> Result<(), S
 }
 
 #[tauri::command]
+pub fn list_wip_plugins() -> Vec<PluginManifest> {
+    explorer_plugins::list_wip_plugins(None)
+}
+
+#[tauri::command]
+pub fn sync_wip_plugin(plugin_id: String) -> Result<(), String> {
+    explorer_plugins::sync_wip_plugin(&plugin_id, None, None)
+}
+
+#[tauri::command]
 pub fn create_zip_archive(
     source_paths: Vec<String>,
     dest_zip_path: String,

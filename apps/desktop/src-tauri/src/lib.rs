@@ -42,6 +42,8 @@ pub fn run() {
             commands::list_plugins,
             commands::read_plugin_entry,
             commands::install_plugin,
+            commands::list_wip_plugins,
+            commands::sync_wip_plugin,
             commands::create_zip_archive,
             commands::extract_zip_archive,
             commands::scan_directory,

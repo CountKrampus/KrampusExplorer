@@ -302,6 +302,23 @@ A plugin listed here may need backend capabilities newer than whatever app versi
 running (the same core-app-vs-plugin gap `docs/releasing.md` describes for the example plugins in
 general) — the marketplace UI has no way to detect or warn about that mismatch.
 
+## Local (dev) plugins
+
+Plugins still being developed live in `examples/plugins-wip/` (see its own README) rather than
+`examples/plugins/` — they're not referenced by `marketplace.json` or fetched by the marketplace
+UI at all, so they stay completely invisible to end users until moved over deliberately.
+
+Settings → Plugins → "Local Plugins (dev)" lists whatever's currently in `plugins-wip/` and syncs
+a chosen plugin's `manifest.json`, entry file, and `icon.png` (if present) straight into your real
+plugins directory via a new `sync_wip_plugin` Tauri command — a local-disk copy, not a network
+fetch, so no `git push` is needed to test changes as you make them, and no app restart either
+(same re-scan-and-rerun behavior as installing from the marketplace or toggling a plugin on/off).
+
+This only does anything useful on a dev build running from an actual source checkout: the backend
+locates `plugins-wip/` via the compiled-in crate path (`env!("CARGO_MANIFEST_DIR")`), which is
+meaningless on a released build running on an end user's machine — there, the list is simply
+empty, exactly as if no WIP plugins existed.
+
 ## Terminal window
 
 `api.openTerminal()` (see `ui.terminal` above) opens a second, detached Tauri window — a real
