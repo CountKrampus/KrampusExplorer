@@ -270,8 +270,30 @@ pub fn terminal_spawn(
     cwd: Option<String>,
     on_output: Channel<TerminalChunk>,
 ) -> Result<String, String> {
+    let leftover = std::sync::Mutex::new(Vec::<u8>::new());
     manager.spawn(cwd.as_deref(), move |bytes| {
-        let _ = on_output.send(TerminalChunk { data: String::from_utf8_lossy(&bytes).to_string() });
+        let mut buf = leftover.lock().unwrap();
+        buf.extend_from_slice(&bytes);
+
+        let valid_len = match std::str::from_utf8(&buf) {
+            Ok(_) => buf.len(),
+            Err(e) => e.valid_up_to(),
+        };
+
+        // If nothing is valid yet and the buffer has grown past the longest possible UTF-8
+        // sequence (4 bytes), this isn't a split character -- it's genuinely invalid bytes.
+        // Flush it lossily rather than buffering forever.
+        let flush_len = if valid_len == 0 && buf.len() > 4 { buf.len() } else { valid_len };
+
+        if flush_len == 0 {
+            return;
+        }
+
+        let text = String::from_utf8_lossy(&buf[..flush_len]).to_string();
+        buf.drain(..flush_len);
+        drop(buf);
+
+        let _ = on_output.send(TerminalChunk { data: text });
     })
 }
 
