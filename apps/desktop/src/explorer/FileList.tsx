@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FixedSizeList } from "react-window";
 import { invoke } from "@tauri-apps/api/core";
 import { useActiveTab, useExplorerStore } from "../stores/useExplorerStore";
 import { useSettingsStore, type SortDirection, type SortField } from "../stores/useSettingsStore";
@@ -97,12 +98,17 @@ function FileList() {
   const renameInputRef = useRef<HTMLInputElement>(null);
   const renameValueRef = useRef("");
   const draggingPathRef = useRef<string | null>(null);
-  const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  const rowRefs = useRef(new Map<string, HTMLElement>());
   // Guards against a rename committing twice: pressing Enter unmounts the rename <input> on the
   // next render, which fires a native blur that would otherwise re-invoke commitRename a second
   // time with the same value.
   const commitInFlightRef = useRef(false);
   const suppressNextBlurRef = useRef(false);
+  // Set by focusRow when the target row isn't currently mounted (only possible once
+  // VirtualFileTable exists) -- registerRow checks this on every row mount and focuses+clears it
+  // if the newly-mounted row is the one that was pending.
+  const pendingFocusPathRef = useRef<string | null>(null);
+  const listRef = useRef<FixedSizeList>(null);
 
   const selectedPath = activeTab?.selectedPath ?? null;
   const selectedPaths = activeTab?.selectedPaths ?? EMPTY_SELECTION;
@@ -118,8 +124,16 @@ function FileList() {
     [entries, sortField, sortDirection],
   );
 
-  const focusRow = useCallback((path: string) => {
-    rowRefs.current.get(path)?.focus();
+  const focusRow = useCallback((path: string, index: number) => {
+    const el = rowRefs.current.get(path);
+    if (el) {
+      el.focus();
+      return;
+    }
+    // Not currently mounted -- only reachable once VirtualFileTable exists (Task 6). Scroll it
+    // into the rendered window; registerRow focuses it once it actually mounts.
+    pendingFocusPathRef.current = path;
+    listRef.current?.scrollToItem(index);
   }, []);
 
   const handleRowKeyDown = useCallback(
@@ -128,12 +142,12 @@ function FileList() {
         event.preventDefault();
         const next = sortedEntries[index + 1];
         setSelected(next.path);
-        focusRow(next.path);
+        focusRow(next.path, index + 1);
       } else if (event.key === "ArrowUp" && index > 0) {
         event.preventDefault();
         const previous = sortedEntries[index - 1];
         setSelected(previous.path);
-        focusRow(previous.path);
+        focusRow(previous.path, index - 1);
       } else if (event.key === "Enter") {
         const entry = sortedEntries[index];
         if (entry.isDir) {
@@ -171,9 +185,16 @@ function FileList() {
     [sortedEntries, setSelected, toggleSelected, selectRange],
   );
 
-  const registerRow = useCallback((path: string, el: HTMLTableRowElement | null) => {
-    if (el) rowRefs.current.set(path, el);
-    else rowRefs.current.delete(path);
+  const registerRow = useCallback((path: string, el: HTMLElement | null) => {
+    if (el) {
+      rowRefs.current.set(path, el);
+      if (pendingFocusPathRef.current === path) {
+        pendingFocusPathRef.current = null;
+        el.focus();
+      }
+    } else {
+      rowRefs.current.delete(path);
+    }
   }, []);
 
   const isDragSource = useCallback((path: string) => draggingPathRef.current === path, []);
