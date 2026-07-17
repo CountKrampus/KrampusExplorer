@@ -215,6 +215,13 @@ Both require a `git` executable on `PATH` and fail if `repoPath` isn't inside a 
 - `openTerminal(): Promise<void>` — opens the detached terminal window (creating it if it
   doesn't exist yet, else focusing the existing one). See "Terminal window" below for what that
   window actually is.
+- `openElevatedTerminal(): Promise<void>` — opens a *second*, separate detached terminal window
+  running fully elevated (Administrator), triggering the Windows UAC consent prompt. Elevation is
+  whole-window, not per-tab: there's no way to get a single elevated tab inside the normal
+  terminal window. Gated behind the same `ui.terminal` permission as `openTerminal()` — this isn't
+  a separate, more dangerous permission scope, since a plugin that can already ask for a terminal
+  can already run arbitrary commands at the app's own OS permissions. See "Terminal window" below
+  for the architecture behind this.
 
 ### `fs.scan` methods
 
@@ -317,6 +324,28 @@ Practically, this means:
 - There's no sandboxing once the window is open — it's a real shell with the app's own OS
   permissions, the same trust level `system.exec` always had (see `examples/plugins/terminal/`,
   which is what "Open Terminal" actually is).
+
+`api.openElevatedTerminal()` opens a *different* window, backed by a materially different
+architecture: `portable-pty`'s shell-spawning is built on plain Win32 `CreateProcess`, which
+cannot elevate a child process — only `ShellExecute`/`ShellExecuteEx` with the `"runas"` verb can
+trigger the UAC consent prompt. So rather than elevating a single shell inside the existing
+terminal window, the app relaunches **itself** as a second, fully elevated OS process (via
+`ShellExecuteW(..., "runas", ...)` targeting its own executable) whose only job is hosting an
+elevated terminal window. Because elevation happens once, at process creation, every shell that
+process's own `TerminalManager`/`portable-pty` code spawns is elevated automatically, with no
+changes needed to the PTY plumbing itself.
+
+That second process is deliberately minimal: it registers only the 6 terminal-related Tauri
+commands and never loads plugins, rather than the app's full command surface (~50 commands
+covering the file explorer, plugins, settings, search, and more). This keeps the attack surface of
+a fully-elevated process as small as possible — a compromised or malicious plugin has no path to
+reach it, since it only comes into existence via one specific, user-consented button click (the
+UAC prompt itself is the consent). The elevated window's title bar shows "(Administrator)",
+determined by a real Win32 token check (`OpenProcessToken`/`GetTokenInformation`) rather than a
+flag passed through the relaunch, so it reflects reality even if the whole app were launched
+elevated some other way. Every call to `openElevatedTerminal()` re-triggers the UAC prompt — there
+is no memory of a prior consent and no way to skip it; silently reusing elevation would be a
+security regression, not a convenience.
 
 ## How entry files execute — and why this matters
 
