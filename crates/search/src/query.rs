@@ -25,6 +25,16 @@ pub struct SearchResult {
     pub modified: Option<i64>,
 }
 
+/// Hard cap on the number of rows a single search() call can return, applied regardless of
+/// filters. Without this, a broad query (e.g. a single common letter) over a large indexed tree
+/// can return an effectively unbounded result set -- in manual testing, rendering one such
+/// unbounded result set drove a WebView2 renderer process past 9GB of memory. 500 is generous
+/// enough to cover real search intent (matching in the many hundreds usually means the query
+/// needs narrowing, not that the user wants to scroll through all of them) while keeping
+/// worst-case IPC payload and render cost small. The frontend's `SEARCH_RESULT_CAP` in
+/// `apps/desktop/src/stores/useSearchStore.ts` must be kept in sync with this value.
+pub const SEARCH_RESULT_CAP: usize = 500;
+
 fn escape_like(value: &str) -> String {
     value
         .replace('\\', "\\\\")
@@ -71,7 +81,8 @@ pub fn search(
         sql.push_str(" AND modified <= ?");
         query_params.push(Box::new(before));
     }
-    sql.push_str(" ORDER BY is_dir DESC, name COLLATE NOCASE ASC");
+    sql.push_str(" ORDER BY is_dir DESC, name COLLATE NOCASE ASC LIMIT ?");
+    query_params.push(Box::new(SEARCH_RESULT_CAP as i64));
 
     let mut stmt = conn
         .prepare(&sql)
@@ -250,5 +261,33 @@ mod tests {
             elapsed.as_millis() < 200,
             "search took {elapsed:?} against 5000 indexed rows, expected well under 200ms"
         );
+    }
+
+    #[test]
+    fn search_caps_results_at_search_result_cap() {
+        let db = tempdir().unwrap();
+        let db_path = db.path().join("search.db");
+        let root = "C:\\synthetic-root-cap";
+        let mut conn = crate::db::open_connection(Some(&db_path)).unwrap();
+        let tx = conn.transaction().unwrap();
+        for i in 0..(SEARCH_RESULT_CAP + 50) {
+            tx.execute(
+                "INSERT INTO index_entries (root, path, name, is_dir, size, modified)
+                 VALUES (?1, ?2, ?3, 0, ?4, 0)",
+                rusqlite::params![
+                    root,
+                    format!("{root}\\item_{i:05}.txt"),
+                    format!("item_{i:05}.txt"),
+                    i as i64,
+                ],
+            )
+            .unwrap();
+        }
+        tx.commit().unwrap();
+        drop(conn);
+
+        let results = search(root, &SearchFilters::default(), Some(&db_path)).unwrap();
+
+        assert_eq!(results.len(), SEARCH_RESULT_CAP);
     }
 }
