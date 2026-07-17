@@ -8,6 +8,8 @@ import { useToastStore } from "../stores/useToastStore";
 import { performTransfer, performTransferBatch } from "../services/fileTransfer";
 import ConfirmDialog from "../components/ConfirmDialog";
 import FileTable from "./FileTable";
+import VirtualFileTable from "./VirtualFileTable";
+import { shouldVirtualize } from "./virtualization";
 import type { EntryInfo } from "../types/filesystem";
 import "./FileList.css";
 
@@ -434,33 +436,64 @@ function FileList() {
           {sortDirection === "asc" ? "▴" : "▾"}
         </button>
       </div>
-      <FileTable
-        entries={sortedEntries}
-        iconSize={iconSize}
-        sortField={sortField}
-        sortDirection={sortDirection}
-        setSort={setSort}
-        selectedSet={selectedSet}
-        dragOverPath={dragOverPath}
-        renamingPath={renamingPath}
-        renameValue={renameValue}
-        renameInputRef={renameInputRef}
-        registerRow={registerRow}
-        onRowClick={handleRowClick}
-        onNavigate={navigateTo}
-        onRowKeyDown={handleRowKeyDown}
-        onContextMenu={onRowContextMenu}
-        isDragSource={isDragSource}
-        onDragStart={onRowDragStart}
-        onDragEnd={onRowDragEnd}
-        onDragEnter={onRowDragEnter}
-        onDragLeave={onRowDragLeave}
-        onDrop={onRowDrop}
-        onRenameChange={onRenameChange}
-        onRenameCommit={handleRenameCommit}
-        onRenameCancel={cancelRename}
-        onRenameBlur={onRenameBlur}
-      />
+      {shouldVirtualize(sortedEntries.length) ? (
+        <VirtualFileTable
+          entries={sortedEntries}
+          iconSize={iconSize}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          setSort={setSort}
+          selectedSet={selectedSet}
+          dragOverPath={dragOverPath}
+          renamingPath={renamingPath}
+          renameValue={renameValue}
+          renameInputRef={renameInputRef}
+          registerRow={registerRow}
+          onRowClick={handleRowClick}
+          onNavigate={navigateTo}
+          onRowKeyDown={handleRowKeyDown}
+          onContextMenu={onRowContextMenu}
+          isDragSource={isDragSource}
+          onDragStart={onRowDragStart}
+          onDragEnd={onRowDragEnd}
+          onDragEnter={onRowDragEnter}
+          onDragLeave={onRowDragLeave}
+          onDrop={onRowDrop}
+          onRenameChange={onRenameChange}
+          onRenameCommit={handleRenameCommit}
+          onRenameCancel={cancelRename}
+          onRenameBlur={onRenameBlur}
+          listRef={listRef}
+        />
+      ) : (
+        <FileTable
+          entries={sortedEntries}
+          iconSize={iconSize}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          setSort={setSort}
+          selectedSet={selectedSet}
+          dragOverPath={dragOverPath}
+          renamingPath={renamingPath}
+          renameValue={renameValue}
+          renameInputRef={renameInputRef}
+          registerRow={registerRow}
+          onRowClick={handleRowClick}
+          onNavigate={navigateTo}
+          onRowKeyDown={handleRowKeyDown}
+          onContextMenu={onRowContextMenu}
+          isDragSource={isDragSource}
+          onDragStart={onRowDragStart}
+          onDragEnd={onRowDragEnd}
+          onDragEnter={onRowDragEnter}
+          onDragLeave={onRowDragLeave}
+          onDrop={onRowDrop}
+          onRenameChange={onRenameChange}
+          onRenameCommit={handleRenameCommit}
+          onRenameCancel={cancelRename}
+          onRenameBlur={onRenameBlur}
+        />
+      )}
       {menu && (
         <div
           className="file-list__context-menu"
