@@ -1,6 +1,8 @@
 import { useExplorerStore } from "../stores/useExplorerStore";
 import { SEARCH_RESULT_CAP, useSearchStore } from "../stores/useSearchStore";
 import SearchResultsTable, { parentOf } from "./SearchResultsTable";
+import VirtualSearchResults from "./VirtualSearchResults";
+import { shouldVirtualize } from "./virtualization";
 import "./SearchResults.css";
 
 /** True once results hit the cap -- a heuristic, not an exact "there are more" signal (a search
@@ -44,7 +46,11 @@ function SearchResults() {
           ⚠ Showing first {SEARCH_RESULT_CAP} results. Narrow your search to see everything.
         </p>
       )}
-      <SearchResultsTable results={results} onOpen={openResult} />
+      {shouldVirtualize(results.length) ? (
+        <VirtualSearchResults results={results} onOpen={openResult} />
+      ) : (
+        <SearchResultsTable results={results} onOpen={openResult} />
+      )}
     </>
   );
 }
