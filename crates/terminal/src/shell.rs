@@ -6,11 +6,17 @@ pub fn shell_candidates() -> Vec<String> {
     shell_candidates_from_env(std::env::var("SHELL").ok(), std::env::var("COMSPEC").ok())
 }
 
-fn shell_candidates_from_env(shell_var: Option<String>, comspec_var: Option<String>) -> Vec<String> {
+fn shell_candidates_from_env(
+    shell_var: Option<String>,
+    comspec_var: Option<String>,
+) -> Vec<String> {
     #[cfg(windows)]
     {
         let _ = shell_var;
-        vec!["powershell.exe".to_string(), comspec_var.unwrap_or_else(|| "cmd.exe".to_string())]
+        vec![
+            "powershell.exe".to_string(),
+            comspec_var.unwrap_or_else(|| "cmd.exe".to_string()),
+        ]
     }
     #[cfg(not(windows))]
     {

@@ -21,7 +21,10 @@ pub struct TerminalManager {
 
 impl Default for TerminalManager {
     fn default() -> Self {
-        Self { sessions: Mutex::new(HashMap::new()), next_id: AtomicU64::new(1) }
+        Self {
+            sessions: Mutex::new(HashMap::new()),
+            next_id: AtomicU64::new(1),
+        }
     }
 }
 
@@ -41,7 +44,12 @@ impl TerminalManager {
     ) -> Result<String, String> {
         let pty_system = native_pty_system();
         let pair = pty_system
-            .openpty(PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 })
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
             .map_err(|e| format!("Could not open a PTY: {e}"))?;
 
         let mut last_error = "no shell candidates".to_string();
@@ -89,10 +97,14 @@ impl TerminalManager {
             }
         });
 
-        self.sessions
-            .lock()
-            .unwrap()
-            .insert(id.clone(), Session { master: pair.master, writer, child });
+        self.sessions.lock().unwrap().insert(
+            id.clone(),
+            Session {
+                master: pair.master,
+                writer,
+                child,
+            },
+        );
 
         Ok(id)
     }
@@ -115,7 +127,12 @@ impl TerminalManager {
             .ok_or_else(|| format!("No terminal session '{session_id}'"))?;
         session
             .master
-            .resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 })
+            .resize(PtySize {
+                rows,
+                cols,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
             .map_err(|e| format!("Could not resize terminal: {e}"))
     }
 
@@ -124,7 +141,10 @@ impl TerminalManager {
         let mut session = sessions
             .remove(session_id)
             .ok_or_else(|| format!("No terminal session '{session_id}'"))?;
-        session.child.kill().map_err(|e| format!("Could not stop terminal: {e}"))?;
+        session
+            .child
+            .kill()
+            .map_err(|e| format!("Could not stop terminal: {e}"))?;
         let _ = session.child.wait();
         Ok(())
     }
@@ -150,7 +170,10 @@ mod tests {
     fn collect_output() -> (impl Fn(Vec<u8>) + Send + 'static, Arc<StdMutex<Vec<u8>>>) {
         let buf = Arc::new(StdMutex::new(Vec::new()));
         let buf2 = buf.clone();
-        (move |chunk: Vec<u8>| buf2.lock().unwrap().extend(chunk), buf)
+        (
+            move |chunk: Vec<u8>| buf2.lock().unwrap().extend(chunk),
+            buf,
+        )
     }
 
     #[test]

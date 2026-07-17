@@ -283,7 +283,11 @@ pub fn terminal_spawn(
         // If nothing is valid yet and the buffer has grown past the longest possible UTF-8
         // sequence (4 bytes), this isn't a split character -- it's genuinely invalid bytes.
         // Flush it lossily rather than buffering forever.
-        let flush_len = if valid_len == 0 && buf.len() > 4 { buf.len() } else { valid_len };
+        let flush_len = if valid_len == 0 && buf.len() > 4 {
+            buf.len()
+        } else {
+            valid_len
+        };
 
         if flush_len == 0 {
             return;
@@ -340,13 +344,14 @@ pub fn open_terminal_window(app: tauri::AppHandle, cwd: Option<String>) -> Resul
         url.push_str(&urlencoding_encode(&cwd));
     }
 
-    let window = tauri::WebviewWindowBuilder::new(&app, "terminal", tauri::WebviewUrl::App(url.into()))
-        .title("Krampus Explorer — Terminal")
-        .inner_size(900.0, 600.0)
-        .min_inner_size(400.0, 300.0)
-        .decorations(false)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let window =
+        tauri::WebviewWindowBuilder::new(&app, "terminal", tauri::WebviewUrl::App(url.into()))
+            .title("Krampus Explorer — Terminal")
+            .inner_size(900.0, 600.0)
+            .min_inner_size(400.0, 300.0)
+            .decorations(false)
+            .build()
+            .map_err(|e| e.to_string())?;
 
     let app_handle = app.clone();
     window.on_window_event(move |event| {
