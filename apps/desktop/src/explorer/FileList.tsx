@@ -324,6 +324,14 @@ function FileList() {
     }
   }, [renamingPath]);
 
+  // Navigating to a different folder or switching tabs both change `currentPath` without going
+  // through any of this component's own handlers (navigateTo is called from breadcrumbs, the
+  // drive list, search results, favorites, etc.) -- clear any pending scroll-then-focus so a stale
+  // path can't steal focus if a same-named row later mounts in an unrelated view.
+  useEffect(() => {
+    pendingFocusPathRef.current = null;
+  }, [currentPath]);
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (renamingPath) return;
