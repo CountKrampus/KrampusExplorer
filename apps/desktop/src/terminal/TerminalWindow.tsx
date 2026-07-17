@@ -35,9 +35,12 @@ function TerminalTabView({ cwd }: TerminalTabProps) {
 
     let sessionId: string | null = null;
     let cancelled = false;
+    let disposed = false;
 
     const onOutput = new Channel<TerminalChunk>();
-    onOutput.onmessage = (chunk) => term.write(chunk.data);
+    onOutput.onmessage = (chunk) => {
+      if (!disposed) term.write(chunk.data);
+    };
 
     invoke<string>("terminal_spawn", { cwd, onOutput })
       .then((id) => {
@@ -66,6 +69,7 @@ function TerminalTabView({ cwd }: TerminalTabProps) {
 
     return () => {
       cancelled = true;
+      disposed = true;
       resizeObserver.disconnect();
       dataDisposable.dispose();
       if (sessionId) void invoke("terminal_close", { sessionId });
@@ -107,17 +111,18 @@ function TerminalWindow() {
     });
   }, []);
 
-  const handleCloseTab = useCallback((key: string) => {
-    setTabState((state) => {
-      const next = removeTab(state, key);
+  const handleCloseTab = useCallback(
+    (key: string) => {
+      const next = removeTab(tabState, key);
+      setTabState(next);
       if (next.tabs.length === 0) {
         void getCurrentWindow().close();
-        return next;
+      } else {
+        setActiveTab((current) => (current === key ? next.tabs[next.tabs.length - 1] : current));
       }
-      setActiveTab((current) => (current === key ? next.tabs[next.tabs.length - 1] : current));
-      return next;
-    });
-  }, []);
+    },
+    [tabState],
+  );
 
   return (
     <div className="terminal-window">
