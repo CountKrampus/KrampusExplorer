@@ -1033,6 +1033,52 @@ git add apps/desktop/src/hooks/useElementSize.ts apps/desktop/src/explorer/Virtu
 git commit -m "Add VirtualFileTable and useElementSize hook"
 ```
 
+- [ ] **Step 6 (hardening, added after review): fix header/row scrollbar misalignment**
+
+Code review found that `.file-list__header-row` lives outside `FixedSizeList`'s own internally
+scrolling container, sized against the full measured width — but once the list actually needs to
+scroll, `FixedSizeList`'s vertical scrollbar narrows the rows' effective content width, so the
+header and body columns visibly misalign. Fixed by making the scrollbar's reserved width
+*constant* regardless of whether content overflows, then reserving the same space in the header:
+
+In `VirtualFileTable.tsx`, add a `style` prop to `<FixedSizeList>`:
+
+```tsx
+<FixedSizeList
+  ref={listRef}
+  height={size.height}
+  width={size.width}
+  itemCount={entries.length}
+  itemSize={ROW_HEIGHT_PX[iconSize]}
+  itemData={itemData}
+  style={{ overflowY: "scroll" }}
+>
+  {VirtualRow}
+</FixedSizeList>
+```
+
+In `FileList.css`, add matching padding to `.file-list__header-row`:
+
+```css
+.file-list__header-row {
+  display: grid;
+  padding: 0;
+  padding-right: 17px; /* Matches FixedSizeList's always-reserved vertical scrollbar so header
+    columns stay aligned with body columns whether or not the list actually needs to scroll.
+    17px is the standard Windows classic-scrollbar width this Chromium-based (WebView2) app
+    renders. */
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+```
+
+(Already implemented in commit `d83933e`.)
+
+```bash
+git add apps/desktop/src/explorer/VirtualFileTable.tsx apps/desktop/src/explorer/FileList.css
+git commit -m "Fix header/row column misalignment from scrollbar width in VirtualFileTable"
+```
+
 ---
 
 ### Task 6: Wire the threshold branch into `FileList` and verify
