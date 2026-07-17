@@ -52,7 +52,7 @@ mod windows_impl {
 
         let mut params = "--elevated-terminal".to_string();
         if let Some(cwd) = cwd {
-            params.push_str(&format!(" --cwd=\"{cwd}\""));
+            params.push_str(&format!(" --cwd={}", quote_arg(cwd)));
         }
 
         let exe_wide = to_wide(&exe_str);
@@ -84,6 +84,26 @@ mod windows_impl {
         s.encode_utf16().chain(std::iter::once(0)).collect()
     }
 
+    /// Quotes `value` for use as a single Windows command-line argument, correctly handling a
+    /// trailing backslash (e.g. a drive root like `C:\`) -- naively wrapping in `"..."` breaks in
+    /// that case, because a backslash is only an escape character when immediately followed by a
+    /// `"`, so a trailing backslash right before the closing quote would escape it instead of
+    /// ending the argument. Any run of backslashes immediately before the closing quote is
+    /// doubled to avoid that. Assumes `value` doesn't itself contain a `"` character, which is
+    /// true for any real Windows filesystem path (NTFS disallows `"` in filenames) but would not
+    /// be safe for arbitrary free-form text.
+    fn quote_arg(value: &str) -> String {
+        let trailing_backslashes = value.chars().rev().take_while(|&c| c == '\\').count();
+        let mut quoted = String::with_capacity(value.len() + trailing_backslashes + 2);
+        quoted.push('"');
+        quoted.push_str(value);
+        for _ in 0..trailing_backslashes {
+            quoted.push('\\');
+        }
+        quoted.push('"');
+        quoted
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -96,6 +116,21 @@ mod windows_impl {
         #[test]
         fn to_wide_handles_empty_string() {
             assert_eq!(to_wide(""), vec![0]);
+        }
+
+        #[test]
+        fn quote_arg_plain_path_no_trailing_backslash() {
+            assert_eq!(quote_arg(r"C:\Users\boo"), "\"C:\\Users\\boo\"");
+        }
+
+        #[test]
+        fn quote_arg_drive_root_doubles_single_trailing_backslash() {
+            assert_eq!(quote_arg(r"C:\"), "\"C:\\\\\"");
+        }
+
+        #[test]
+        fn quote_arg_doubles_two_trailing_backslashes() {
+            assert_eq!(quote_arg(r"C:\Users\\"), "\"C:\\Users\\\\\\\\\"");
         }
 
         #[test]
