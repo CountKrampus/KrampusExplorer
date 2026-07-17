@@ -652,6 +652,28 @@ git add apps/desktop/src/explorer/FileList.tsx
 git commit -m "Clear pending row-focus on click, rename, and Escape to avoid stray focus-steal"
 ```
 
+- [ ] **Step 10 (hardening, added after a second review pass): clear on folder/tab navigation too**
+
+A second reviewer found `navigateTo` (folder navigation) and tab switching both change
+`currentPath` without going through any of the three handlers in Step 9, leaving
+`pendingFocusPathRef` able to dangle across an unrelated folder/tab. Add, near the component's
+other small effects:
+
+```ts
+useEffect(() => {
+  pendingFocusPathRef.current = null;
+}, [currentPath]);
+```
+
+(Already implemented in commit `e9a8b1b`.) This is the fourth and final clear-site — combined
+with click, rename-start, and Escape, every way the user can move on from a pending scroll+focus
+before it resolves is now covered.
+
+```bash
+git add apps/desktop/src/explorer/FileList.tsx
+git commit -m "Clear pending row-focus on folder/tab navigation"
+```
+
 ---
 
 ### Task 5: Add `useElementSize` hook and build `VirtualFileTable`
