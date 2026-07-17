@@ -31,7 +31,7 @@ See [Plan.md](Plan.md) for the full vision, architecture, and roadmap.
 | [database-browser](examples/plugins/database-browser) | Browse SQLite files or a MongoDB server, with a mode toggle |
 | [git-integration](examples/plugins/git-integration) | Shows `git status`/`git log` for the folder you're browsing |
 | [mtg-collection-manager](examples/plugins/mtg-collection-manager) | Tracks a Magic: The Gathering card collection via the Scryfall API |
-| [run-command](examples/plugins/run-command) | Runs a single shell command in the current folder and shows its output |
+| [terminal](examples/plugins/terminal) | Opens a detached, tabbed terminal window with a real interactive shell |
 | [duplicate-finder](examples/plugins/duplicate-finder) | Finds duplicate files by content hash, grouped with wasted-space totals |
 | [disk-usage-visualizer](examples/plugins/disk-usage-visualizer) | Recursive size breakdown of a folder's immediate children |
 | [checksum-verifier](examples/plugins/checksum-verifier) | Computes MD5/SHA-1/SHA-256 and checks against a pasted checksum |

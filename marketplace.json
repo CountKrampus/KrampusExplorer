@@ -20,9 +20,9 @@
     "description": "Tracks a Magic: The Gathering card collection via the Scryfall API."
   },
   {
-    "id": "run-command",
-    "name": "Run Command",
-    "description": "Runs a single shell command in the current folder and shows its output."
+    "id": "terminal",
+    "name": "Terminal",
+    "description": "Opens a detached, tabbed terminal window with a real interactive shell."
   },
   {
     "id": "duplicate-finder",

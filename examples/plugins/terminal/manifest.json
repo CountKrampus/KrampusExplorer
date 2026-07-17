@@ -1,0 +1,8 @@
+{
+  "id": "terminal",
+  "name": "Terminal",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "nav.read", "ui.terminal"],
+  "entry": "frontend/index.js"
+}
