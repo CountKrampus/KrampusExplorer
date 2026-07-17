@@ -638,6 +638,20 @@ git add apps/desktop/src/explorer/FileList.tsx
 git commit -m "Generalize row focus plumbing to support scrolling to unmounted rows"
 ```
 
+- [ ] **Step 9 (hardening, added after initial review): clear stale pending focus**
+
+Code review of this task found a real edge case: `pendingFocusPathRef` is only cleared by a
+matching row mount, never by the user doing something else first (clicking a different row,
+starting a rename, pressing Escape). Once `VirtualFileTable` exists, a row that mounts *after*
+the user has moved on would still steal focus. Add `pendingFocusPathRef.current = null;` as an
+unconditional first line in `handleRowClick`, `beginRename`, and the `Escape` branch of the
+folder-level `handleKeyDown` effect. (Already implemented in commit `d9120f9`.)
+
+```bash
+git add apps/desktop/src/explorer/FileList.tsx
+git commit -m "Clear pending row-focus on click, rename, and Escape to avoid stray focus-steal"
+```
+
 ---
 
 ### Task 5: Add `useElementSize` hook and build `VirtualFileTable`
