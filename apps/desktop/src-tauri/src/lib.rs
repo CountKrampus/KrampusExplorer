@@ -32,6 +32,8 @@ pub fn run() {
             commands::delete_entries,
             commands::start_recovery_scan,
             commands::get_recovery_progress,
+            commands::get_system_drive,
+            commands::format_drive,
             commands::create_folder,
             commands::create_file,
             commands::copy_entry,

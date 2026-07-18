@@ -1,5 +1,6 @@
 use explorer_filesystem::{
-    list_directory, list_drives, DirectoryListing, DriveInfo, KnownFolder, TrashedItem,
+    list_directory, list_drives, DirectoryListing, DriveInfo, FormatOutcome, KnownFolder,
+    TrashedItem,
 };
 use explorer_plugins::{
     CommandOutput, FileHash, GitCommit, GitFileStatus, MultiHash, PluginFile, PluginManifest,
@@ -102,6 +103,29 @@ pub fn start_recovery_scan(
 #[tauri::command]
 pub fn get_recovery_progress(scan_id: String) -> Result<RecoveryProgress, String> {
     read_progress(std::path::Path::new(&scan_id))
+}
+
+#[tauri::command]
+pub fn get_system_drive() -> Option<String> {
+    explorer_filesystem::get_system_drive()
+}
+
+/// `async` (unlike most commands in this file) so the blocking `SHFormatDrive` call -- which
+/// opens a real modal Windows dialog and blocks until the user dismisses it, potentially for
+/// minutes -- runs via `spawn_blocking` rather than stalling a synchronous command handler.
+/// `window.hwnd()` returns a `windows::Win32::Foundation::HWND` (a tuple struct wrapping a raw
+/// pointer); `.0 as isize` converts it to a `Send`-able integer that can cross into the
+/// `spawn_blocking` closure, then back to a pointer-typed HWND inside `format_drive` itself.
+#[tauri::command]
+pub async fn format_drive(window: tauri::WebviewWindow, drive: String) -> Result<FormatOutcome, String> {
+    let hwnd = window
+        .hwnd()
+        .map_err(|e| format!("Could not get the window handle: {e}"))?
+        .0 as isize;
+
+    tauri::async_runtime::spawn_blocking(move || explorer_filesystem::format_drive(&drive, hwnd))
+        .await
+        .map_err(|e| format!("Format task panicked: {e}"))?
 }
 
 #[tauri::command]
