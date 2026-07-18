@@ -29,7 +29,9 @@ impl KnownFolder {
 pub fn get_known_folder(folder: KnownFolder) -> Option<String> {
     match folder {
         KnownFolder::Temp => Some(std::env::temp_dir().to_string_lossy().to_string()),
-        KnownFolder::LocalAppData => dirs::data_local_dir().map(|p| p.to_string_lossy().to_string()),
+        KnownFolder::LocalAppData => {
+            dirs::data_local_dir().map(|p| p.to_string_lossy().to_string())
+        }
         KnownFolder::RoamingAppData => dirs::data_dir().map(|p| p.to_string_lossy().to_string()),
         KnownFolder::Home => dirs::home_dir().map(|p| p.to_string_lossy().to_string()),
     }
@@ -42,8 +44,14 @@ mod tests {
     #[test]
     fn parse_accepts_all_four_known_identifiers() {
         assert_eq!(KnownFolder::parse("temp"), Ok(KnownFolder::Temp));
-        assert_eq!(KnownFolder::parse("local_app_data"), Ok(KnownFolder::LocalAppData));
-        assert_eq!(KnownFolder::parse("roaming_app_data"), Ok(KnownFolder::RoamingAppData));
+        assert_eq!(
+            KnownFolder::parse("local_app_data"),
+            Ok(KnownFolder::LocalAppData)
+        );
+        assert_eq!(
+            KnownFolder::parse("roaming_app_data"),
+            Ok(KnownFolder::RoamingAppData)
+        );
         assert_eq!(KnownFolder::parse("home"), Ok(KnownFolder::Home));
     }
 
