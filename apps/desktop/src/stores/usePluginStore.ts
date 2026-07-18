@@ -212,6 +212,9 @@ export const usePluginStore = create<PluginState>((set) => ({
             invoke<string>("start_recovery_scan", { drive, destination, fileTypes }),
           getRecoveryProgress: (scanId) =>
             invoke<RecoveryProgress>("get_recovery_progress", { scanId }),
+          getSystemDrive: () => invoke<string | null>("get_system_drive"),
+          formatDrive: (drive) =>
+            invoke<"formatted" | "cancelled" | "noFormat">("format_drive", { drive }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.
