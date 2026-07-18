@@ -204,6 +204,8 @@ export const usePluginStore = create<PluginState>((set) => ({
           restoreTrashItem: (id) => invoke<void>("restore_trash_item", { id }),
           purgeTrashItem: (id) => invoke<void>("purge_trash_item", { id }),
           emptyTrash: () => invoke<void>("empty_trash"),
+          deleteEntries: (paths) => invoke<void>("delete_entries", { paths }),
+          getKnownFolder: (folder) => invoke<string | null>("get_known_folder", { folder }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.
