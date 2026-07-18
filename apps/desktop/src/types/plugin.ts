@@ -231,4 +231,15 @@ export interface PluginApi {
   /** Present only if the plugin's manifest declares the "fs.trash" permission. Permanently
    * deletes everything currently in the Recycle Bin -- irreversible. */
   emptyTrash?: () => Promise<void>;
+  /** Present only if the plugin's manifest declares the "fs.trash" permission. Sends every path
+   * in `paths` to the Recycle Bin in one call. A directory path is moved as a whole -- its
+   * contents don't need to be listed first. */
+  deleteEntries?: (paths: string[]) => Promise<void>;
+  /** Present only if the plugin's manifest declares the "system.paths" permission. Resolves one
+   * of a small fixed set of known system locations: "temp", "local_app_data",
+   * "roaming_app_data", or "home". Resolves to `null` (not an error) if that location can't be
+   * determined on this system -- any other identifier is rejected. */
+  getKnownFolder?: (
+    folder: "temp" | "local_app_data" | "roaming_app_data" | "home",
+  ) => Promise<string | null>;
 }

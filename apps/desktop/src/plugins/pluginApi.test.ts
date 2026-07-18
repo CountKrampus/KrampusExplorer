@@ -50,6 +50,8 @@ function handlers(): PluginApiHandlers {
     restoreTrashItem: vi.fn().mockResolvedValue(undefined),
     purgeTrashItem: vi.fn().mockResolvedValue(undefined),
     emptyTrash: vi.fn().mockResolvedValue(undefined),
+    deleteEntries: vi.fn().mockResolvedValue(undefined),
+    getKnownFolder: vi.fn().mockResolvedValue("C:\\Users\\boo\\AppData\\Local\\Temp"),
   };
 }
 
@@ -74,6 +76,7 @@ describe("createPluginApi", () => {
     "ui.terminal",
     "ui.confirm",
     "fs.trash",
+    "system.paths",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -109,6 +112,8 @@ describe("createPluginApi", () => {
     "restoreTrashItem",
     "purgeTrashItem",
     "emptyTrash",
+    "deleteEntries",
+    "getKnownFolder",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -145,7 +150,8 @@ describe("createPluginApi", () => {
     ["commands.register", ["registerCommand"]],
     ["ui.terminal", ["openTerminal", "openElevatedTerminal"]],
     ["ui.confirm", ["confirm"]],
-    ["fs.trash", ["listTrashItems", "restoreTrashItem", "purgeTrashItem", "emptyTrash"]],
+    ["fs.trash", ["listTrashItems", "restoreTrashItem", "purgeTrashItem", "emptyTrash", "deleteEntries"]],
+    ["system.paths", ["getKnownFolder"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -292,5 +298,23 @@ describe("createPluginApi", () => {
     await api.purgeTrashItem?.("some-id");
 
     expect(h.purgeTrashItem).toHaveBeenCalledWith("some-id");
+  });
+
+  it("deleteEntries calls the handler with the paths", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["fs.trash"]), h);
+
+    await api.deleteEntries?.(["C:\\a.txt", "C:\\b.txt"]);
+
+    expect(h.deleteEntries).toHaveBeenCalledWith(["C:\\a.txt", "C:\\b.txt"]);
+  });
+
+  it("getKnownFolder calls the handler with the folder name", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["system.paths"]), h);
+
+    await api.getKnownFolder?.("temp");
+
+    expect(h.getKnownFolder).toHaveBeenCalledWith("temp");
   });
 });

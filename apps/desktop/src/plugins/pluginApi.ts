@@ -61,6 +61,8 @@ export interface PluginApiHandlers {
   restoreTrashItem: (id: string) => Promise<void>;
   purgeTrashItem: (id: string) => Promise<void>;
   emptyTrash: () => Promise<void>;
+  deleteEntries: (paths: string[]) => Promise<void>;
+  getKnownFolder: (folder: string) => Promise<string | null>;
 }
 
 /**
@@ -145,6 +147,10 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
     api.restoreTrashItem = (id) => handlers.restoreTrashItem(id);
     api.purgeTrashItem = (id) => handlers.purgeTrashItem(id);
     api.emptyTrash = () => handlers.emptyTrash();
+    api.deleteEntries = (paths) => handlers.deleteEntries(paths);
+  }
+  if (has("system.paths")) {
+    api.getKnownFolder = (folder) => handlers.getKnownFolder(folder);
   }
 
   return api;
