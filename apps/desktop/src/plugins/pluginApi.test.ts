@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPluginApi, type PluginApiHandlers } from "./pluginApi";
-import type { PluginManifest } from "../types/plugin";
+import type { PluginManifest, RecoveryProgress } from "../types/plugin";
 
 function manifest(permissions: string[]): PluginManifest {
   return {
@@ -52,6 +52,15 @@ function handlers(): PluginApiHandlers {
     emptyTrash: vi.fn().mockResolvedValue(undefined),
     deleteEntries: vi.fn().mockResolvedValue(undefined),
     getKnownFolder: vi.fn().mockResolvedValue("C:\\Users\\boo\\AppData\\Local\\Temp"),
+    listDrives: vi.fn().mockResolvedValue([]),
+    startRecoveryScan: vi.fn().mockResolvedValue("C:\\Temp\\krampus-recovery-123.json"),
+    getRecoveryProgress: vi.fn().mockResolvedValue({
+      status: "running",
+      bytesScanned: 0,
+      totalBytes: 100,
+      filesFoundByType: {},
+      error: null,
+    } satisfies RecoveryProgress),
   };
 }
 
@@ -77,6 +86,8 @@ describe("createPluginApi", () => {
     "ui.confirm",
     "fs.trash",
     "system.paths",
+    "system.drives",
+    "fs.recover",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -114,6 +125,9 @@ describe("createPluginApi", () => {
     "emptyTrash",
     "deleteEntries",
     "getKnownFolder",
+    "listDrives",
+    "startRecoveryScan",
+    "getRecoveryProgress",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -152,6 +166,8 @@ describe("createPluginApi", () => {
     ["ui.confirm", ["confirm"]],
     ["fs.trash", ["listTrashItems", "restoreTrashItem", "purgeTrashItem", "emptyTrash", "deleteEntries"]],
     ["system.paths", ["getKnownFolder"]],
+    ["system.drives", ["listDrives"]],
+    ["fs.recover", ["startRecoveryScan", "getRecoveryProgress"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -316,5 +332,23 @@ describe("createPluginApi", () => {
     await api.getKnownFolder?.("temp");
 
     expect(h.getKnownFolder).toHaveBeenCalledWith("temp");
+  });
+
+  it("startRecoveryScan calls the handler with drive, destination, and file types", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["fs.recover"]), h);
+
+    await api.startRecoveryScan?.("D:", "C:\\Recovered", ["jpeg", "png"]);
+
+    expect(h.startRecoveryScan).toHaveBeenCalledWith("D:", "C:\\Recovered", ["jpeg", "png"]);
+  });
+
+  it("getRecoveryProgress calls the handler with the scan id", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["fs.recover"]), h);
+
+    await api.getRecoveryProgress?.("C:\\Temp\\krampus-recovery-123.json");
+
+    expect(h.getRecoveryProgress).toHaveBeenCalledWith("C:\\Temp\\krampus-recovery-123.json");
   });
 });

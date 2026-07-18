@@ -1,4 +1,4 @@
-import type { EntryInfo } from "../types/filesystem";
+import type { DriveInfo, EntryInfo } from "../types/filesystem";
 import type {
   CommandOutput,
   FileHash,
@@ -12,6 +12,7 @@ import type {
   PluginManifest,
   PluginSidebarPanel,
   PluginToolbarButton,
+  RecoveryProgress,
   ScannedFile,
   SqliteTable,
   TrashedItem,
@@ -63,6 +64,9 @@ export interface PluginApiHandlers {
   emptyTrash: () => Promise<void>;
   deleteEntries: (paths: string[]) => Promise<void>;
   getKnownFolder: (folder: string) => Promise<string | null>;
+  listDrives: () => Promise<DriveInfo[]>;
+  startRecoveryScan: (drive: string, destination: string, fileTypes: string[]) => Promise<string>;
+  getRecoveryProgress: (scanId: string) => Promise<RecoveryProgress>;
 }
 
 /**
@@ -151,6 +155,14 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
   }
   if (has("system.paths")) {
     api.getKnownFolder = (folder) => handlers.getKnownFolder(folder);
+  }
+  if (has("system.drives")) {
+    api.listDrives = () => handlers.listDrives();
+  }
+  if (has("fs.recover")) {
+    api.startRecoveryScan = (drive, destination, fileTypes) =>
+      handlers.startRecoveryScan(drive, destination, fileTypes);
+    api.getRecoveryProgress = (scanId) => handlers.getRecoveryProgress(scanId);
   }
 
   return api;

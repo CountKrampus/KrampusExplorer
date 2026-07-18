@@ -1,4 +1,4 @@
-import type { EntryInfo } from "./filesystem";
+import type { DriveInfo, EntryInfo } from "./filesystem";
 
 export interface PluginManifest {
   id: string;
@@ -107,6 +107,16 @@ export interface TrashedItem {
   timeDeleted: number;
   /** `null` if the size couldn't be determined for this item. */
   sizeBytes: number | null;
+}
+
+export interface RecoveryProgress {
+  status: "running" | "completed" | "failed";
+  bytesScanned: number;
+  totalBytes: number;
+  /** Keyed by subfolder name ("jpeg", "png", "pdf", "zip", "mp3"). */
+  filesFoundByType: Record<string, number>;
+  /** Present only when `status` is `"failed"`. */
+  error: string | null;
 }
 
 export interface PluginApi {
@@ -242,4 +252,19 @@ export interface PluginApi {
   getKnownFolder?: (
     folder: "temp" | "local_app_data" | "roaming_app_data" | "home",
   ) => Promise<string | null>;
+  /** Present only if the plugin's manifest declares the "system.drives" permission. Lists every
+   * detected drive -- the same data the sidebar's Drives section uses. */
+  listDrives?: () => Promise<DriveInfo[]>;
+  /** Present only if the plugin's manifest declares the "fs.recover" permission. Starts a
+   * signature-based recovery scan of `drive` (e.g. "D:"), writing recovered files into
+   * `destination` under per-type subfolders. `fileTypes` is a subset of "jpeg", "png", "pdf",
+   * "zip", "mp3". Triggers a Windows UAC elevation prompt -- the scan runs in a separate,
+   * elevated process. Resolves to an opaque scan id to pass to `getRecoveryProgress`; does not
+   * wait for the scan itself to finish. */
+  startRecoveryScan?: (drive: string, destination: string, fileTypes: string[]) => Promise<string>;
+  /** Present only if the plugin's manifest declares the "fs.recover" permission. Polls the
+   * current state of a scan started via `startRecoveryScan`. Rejects if called before the
+   * elevated process has written its first progress update -- callers should tolerate a brief
+   * initial failure window rather than treating it as fatal. */
+  getRecoveryProgress?: (scanId: string) => Promise<RecoveryProgress>;
 }
