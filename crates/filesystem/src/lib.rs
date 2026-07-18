@@ -16,5 +16,6 @@ pub use operations::{
     move_entry_reporting, rename_entry,
 };
 pub use trash_bin::{
-    empty_trash, list_trash_items, purge_trash_item, restore_trash_item, TrashedItem,
+    delete_entries, empty_trash, list_trash_items, purge_trash_item, restore_trash_item,
+    TrashedItem,
 };

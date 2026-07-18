@@ -64,3 +64,13 @@ pub fn empty_trash() -> Result<(), String> {
     let items = list().map_err(|e| format!("Could not list Recycle Bin items: {e}"))?;
     purge_all(items).map_err(|e| format!("Could not empty the Recycle Bin: {e}"))
 }
+
+/// Sends every path in `paths` to the Recycle Bin in a single call, rather than one round-trip
+/// per file -- important since a temp folder or browser cache can hold thousands of entries, and
+/// per-file IPC calls would be both slow and (for a very large folder) a large-message-count
+/// risk similar to the search/scan issues fixed earlier (see `SEARCH_RESULT_CAP`/`SCAN_FILE_CAP`
+/// in `crates/search`/`crates/plugins`). A directory path in `paths` is moved to the Recycle Bin
+/// as a whole (its contents don't need to be enumerated by the caller first).
+pub fn delete_entries(paths: &[String]) -> Result<(), String> {
+    trash::delete_all(paths).map_err(|e| format!("Could not delete entries: {e}"))
+}
