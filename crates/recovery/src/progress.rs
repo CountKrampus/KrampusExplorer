@@ -20,7 +20,7 @@ pub struct RecoveryProgress {
     pub error: Option<String>,
 }
 
-pub fn write_progress(path: &Path, progress: &RecoveryProgress) -> Result<(), String> {
+pub(crate) fn write_progress(path: &Path, progress: &RecoveryProgress) -> Result<(), String> {
     let json =
         serde_json::to_string(progress).map_err(|e| format!("Could not serialize progress: {e}"))?;
     std::fs::write(path, json).map_err(|e| format!("Could not write progress file: {e}"))
