@@ -28,6 +28,7 @@ fuller examples covering most of the permissions below:
 - `examples/plugins/disk-usage-visualizer/` — recursive scan via `fs.scan`
 - `examples/plugins/checksum-verifier/` — MD5/SHA-1/SHA-256 via `fs.scan`
 - `examples/plugins/batch-rename/` — Find/Replace with live preview via `fs.list`/`fs.rename`
+- `examples/plugins/recycling-bin/` — browse/restore/purge the OS Recycle Bin via `fs.trash`/`ui.confirm`
 
 ## manifest.json
 
@@ -82,6 +83,8 @@ call, because ungranted methods simply don't exist on the object.
 | `fs.list` | `api.listDirectory(path)` |
 | `fs.rename` | `api.renameEntry(path, newName)` |
 | `commands.register` | `api.registerCommand(command)` |
+| `fs.trash` | `api.listTrashItems()`, `api.restoreTrashItem(id)`, `api.purgeTrashItem(id)`, `api.emptyTrash()` |
+| `ui.confirm` | `api.confirm(message)` |
 
 ### `registerSidebarPanel`
 
@@ -265,6 +268,26 @@ api.registerCommand({
 Adds an entry to the command palette (`Ctrl+K`/`Cmd+K`), alongside the app's built-in commands
 and any other plugins' commands. There's no arguments passed to `run` — a command is a fixed
 action, not something that takes input at invocation time.
+
+### `fs.trash` methods
+
+- `listTrashItems(): Promise<TrashedItem[]>` — lists everything currently in the OS Recycle Bin.
+  Each item has `id` (an opaque identifier, not a path — pass it back verbatim to
+  `restoreTrashItem`/`purgeTrashItem`), `name`, `originalParent`, `timeDeleted` (Unix epoch
+  seconds), and `sizeBytes` (`null` if it couldn't be determined).
+- `restoreTrashItem(id: string): Promise<void>` — restores one item to its original location.
+- `purgeTrashItem(id: string): Promise<void>` — permanently deletes one item from the Recycle
+  Bin. Irreversible.
+- `emptyTrash(): Promise<void>` — permanently deletes everything currently in the Recycle Bin.
+  Irreversible.
+
+### `ui.confirm` methods
+
+- `confirm(message: string): Promise<boolean>` — shows the app's own confirmation dialog
+  (the same one used throughout the core app, e.g. for regular delete-to-Recycle-Bin) with
+  `message` and Confirm/Cancel buttons; resolves to whether the user confirmed. Only one
+  confirmation can be shown at a time — a second call while one is already pending immediately
+  resolves the earlier one to `false`.
 
 ## Plugin marketplace
 

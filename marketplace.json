@@ -43,5 +43,10 @@
     "id": "batch-rename",
     "name": "Batch Rename",
     "description": "Find/Replace renaming for a folder's contents, with live preview."
+  },
+  {
+    "id": "recycling-bin",
+    "name": "Recycling Bin",
+    "description": "Browse, restore, permanently delete, or empty the Windows Recycle Bin."
   }
 ]
