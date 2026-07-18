@@ -30,6 +30,8 @@ pub fn run() {
             commands::empty_trash,
             commands::get_known_folder,
             commands::delete_entries,
+            commands::start_recovery_scan,
+            commands::get_recovery_progress,
             commands::create_folder,
             commands::create_file,
             commands::copy_entry,

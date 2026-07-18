@@ -6,6 +6,7 @@ use explorer_plugins::{
     ScannedFile, TableData,
 };
 use explorer_preview::TextPreview;
+use explorer_recovery::{read_progress, relaunch_recovery_scan, RecoveryProgress};
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
 use explorer_settings::Settings;
 use explorer_terminal::TerminalManager;
@@ -78,6 +79,29 @@ pub fn get_known_folder(folder: String) -> Result<Option<String>, String> {
 #[tauri::command]
 pub fn delete_entries(paths: Vec<String>) -> Result<(), String> {
     explorer_filesystem::delete_entries(&paths)
+}
+
+#[tauri::command]
+pub fn start_recovery_scan(
+    drive: String,
+    destination: String,
+    file_types: Vec<String>,
+) -> Result<String, String> {
+    let scan_id = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos().to_string())
+        .unwrap_or_else(|_| "0".to_string());
+    let result_file = std::env::temp_dir()
+        .join(format!("krampus-recovery-{scan_id}.json"))
+        .to_string_lossy()
+        .to_string();
+    relaunch_recovery_scan(&drive, &destination, &file_types, &result_file)?;
+    Ok(result_file)
+}
+
+#[tauri::command]
+pub fn get_recovery_progress(scan_id: String) -> Result<RecoveryProgress, String> {
+    read_progress(std::path::Path::new(&scan_id))
 }
 
 #[tauri::command]
