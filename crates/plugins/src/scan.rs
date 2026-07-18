@@ -28,6 +28,17 @@ pub struct MultiHash {
     pub sha256: String,
 }
 
+/// Hard cap on the number of files a single scan_directory() call can return. Without this, a
+/// recursive walk of a large root (a whole drive commonly has 200k-1M+ files) returns an
+/// effectively unbounded result set -- in a real bug report, this froze the app for about a
+/// minute (a slow Rust-side walk, a huge IPC payload, then a synchronous JS loop over the whole
+/// array). 50,000 keeps worst-case payload/processing time bounded while staying generous for
+/// legitimate large-folder analysis. Any plugin frontend calling `scanDirectory` should treat a
+/// result of exactly this length as "possibly truncated, more may exist" -- see
+/// examples/plugins/disk-usage-visualizer/frontend/index.js and
+/// examples/plugins/duplicate-finder/frontend/index.js's matching `SCAN_FILE_CAP` constants.
+pub const SCAN_FILE_CAP: usize = 50_000;
+
 /// Recursively lists every *file* (not directory) under `root`, with its size. Symlinks are not
 /// followed — `read_dir`'s `file_type()` reports a symlink as neither a file nor a directory
 /// unless it's resolved, and we deliberately don't resolve it, to avoid infinite loops on a
@@ -38,28 +49,38 @@ pub struct MultiHash {
 /// drive) is skipped rather than failing the entire scan — matches `crates/search`'s own walker,
 /// which has the same "one unreadable folder shouldn't abort the whole operation" reasoning.
 pub fn scan_directory(root: &str) -> Result<Vec<ScannedFile>, String> {
+    scan_directory_capped(root, SCAN_FILE_CAP)
+}
+
+fn scan_directory_capped(root: &str, cap: usize) -> Result<Vec<ScannedFile>, String> {
     let root_path = Path::new(root);
     if !root_path.is_dir() {
         return Err(format!("'{root}' is not a directory"));
     }
     let mut results = Vec::new();
-    walk(root_path, &mut results);
+    walk(root_path, &mut results, cap);
     Ok(results)
 }
 
-fn walk(dir: &Path, results: &mut Vec<ScannedFile>) {
+fn walk(dir: &Path, results: &mut Vec<ScannedFile>, cap: usize) {
+    if results.len() >= cap {
+        return;
+    }
     let read_dir = match std::fs::read_dir(dir) {
         Ok(rd) => rd,
         Err(_) => return,
     };
 
     for entry in read_dir.flatten() {
+        if results.len() >= cap {
+            return;
+        }
         let Ok(file_type) = entry.file_type() else {
             continue;
         };
         let path = entry.path();
         if file_type.is_dir() {
-            walk(&path, results);
+            walk(&path, results, cap);
         } else if file_type.is_file() {
             let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
             results.push(ScannedFile {
@@ -184,6 +205,18 @@ mod tests {
         let dir = tempdir().unwrap();
         let files = scan_directory(dir.path().to_str().unwrap()).unwrap();
         assert!(files.is_empty());
+    }
+
+    #[test]
+    fn scan_directory_caps_results_at_the_given_limit() {
+        let dir = tempdir().unwrap();
+        for i in 0..10 {
+            fs::write(dir.path().join(format!("file_{i}.txt")), b"x").unwrap();
+        }
+
+        let files = scan_directory_capped(dir.path().to_str().unwrap(), 5).unwrap();
+
+        assert_eq!(files.len(), 5);
     }
 
     #[test]
