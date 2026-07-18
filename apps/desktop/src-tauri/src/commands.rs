@@ -1,4 +1,4 @@
-use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo};
+use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo, TrashedItem};
 use explorer_plugins::{
     CommandOutput, FileHash, GitCommit, GitFileStatus, MultiHash, PluginFile, PluginManifest,
     ScannedFile, TableData,
@@ -45,6 +45,26 @@ pub fn rename_entry(path: String, new_name: String) -> Result<String, String> {
 #[tauri::command]
 pub fn delete_entry(path: String) -> Result<(), String> {
     explorer_filesystem::delete_entry(&path)
+}
+
+#[tauri::command]
+pub fn list_trash_items() -> Result<Vec<TrashedItem>, String> {
+    explorer_filesystem::list_trash_items()
+}
+
+#[tauri::command]
+pub fn restore_trash_item(id: String) -> Result<(), String> {
+    explorer_filesystem::restore_trash_item(&id)
+}
+
+#[tauri::command]
+pub fn purge_trash_item(id: String) -> Result<(), String> {
+    explorer_filesystem::purge_trash_item(&id)
+}
+
+#[tauri::command]
+pub fn empty_trash() -> Result<(), String> {
+    explorer_filesystem::empty_trash()
 }
 
 #[tauri::command]
