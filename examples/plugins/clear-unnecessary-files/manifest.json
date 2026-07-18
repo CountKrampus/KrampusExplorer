@@ -1,0 +1,8 @@
+{
+  "id": "clear-unnecessary-files",
+  "name": "Clear Unnecessary Files",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "system.paths", "fs.list", "fs.trash", "ui.confirm"],
+  "entry": "frontend/index.js"
+}
