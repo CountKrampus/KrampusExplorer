@@ -100,6 +100,22 @@
   color: var(--danger);
 }
 
+.sidebar__refresh-button {
+  margin: 2px 12px 4px;
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.sidebar__refresh-button:hover {
+  background: var(--border);
+  color: var(--fg);
+}
+
 .sidebar__item--drive {
   display: flex;
   flex-direction: column;
