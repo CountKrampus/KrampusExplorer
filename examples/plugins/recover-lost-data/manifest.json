@@ -1,0 +1,8 @@
+{
+  "id": "recover-lost-data",
+  "name": "Recover Lost Data",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "system.drives", "fs.recover", "ui.confirm", "nav.read"],
+  "entry": "frontend/index.js"
+}
