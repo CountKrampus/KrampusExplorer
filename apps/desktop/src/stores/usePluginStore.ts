@@ -5,7 +5,7 @@ import { createPluginApi } from "../plugins/pluginApi";
 import { useExplorerStore } from "./useExplorerStore";
 import { useSettingsStore } from "./useSettingsStore";
 import { useConfirmStore } from "./useConfirmStore";
-import type { DirectoryListing } from "../types/filesystem";
+import type { DirectoryListing, DriveInfo } from "../types/filesystem";
 import type {
   CommandOutput,
   FileHash,
@@ -18,6 +18,7 @@ import type {
   PluginManifest,
   PluginSidebarPanel,
   PluginToolbarButton,
+  RecoveryProgress,
   ScannedFile,
   SqliteTable,
   TrashedItem,
@@ -206,6 +207,11 @@ export const usePluginStore = create<PluginState>((set) => ({
           emptyTrash: () => invoke<void>("empty_trash"),
           deleteEntries: (paths) => invoke<void>("delete_entries", { paths }),
           getKnownFolder: (folder) => invoke<string | null>("get_known_folder", { folder }),
+          listDrives: () => invoke<DriveInfo[]>("get_drives"),
+          startRecoveryScan: (drive, destination, fileTypes) =>
+            invoke<string>("start_recovery_scan", { drive, destination, fileTypes }),
+          getRecoveryProgress: (scanId) =>
+            invoke<RecoveryProgress>("get_recovery_progress", { scanId }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.
