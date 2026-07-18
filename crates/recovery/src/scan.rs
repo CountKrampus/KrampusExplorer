@@ -1,5 +1,7 @@
 use crate::progress::{write_progress, RecoveryProgress, RecoveryStatus};
-use crate::signatures::{find_earliest_start, find_extraction_length, FileType, MAX_START_MARKER_LEN};
+use crate::signatures::{
+    find_earliest_start, find_extraction_length, FileType, MAX_START_MARKER_LEN,
+};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -16,8 +18,10 @@ pub fn run_scan(
     result_file_path: &str,
 ) -> Result<(), String> {
     let result_path = Path::new(result_file_path);
-    let enabled_types: Vec<FileType> =
-        file_types.iter().map(|s| FileType::parse(s)).collect::<Result<_, _>>()?;
+    let enabled_types: Vec<FileType> = file_types
+        .iter()
+        .map(|s| FileType::parse(s))
+        .collect::<Result<_, _>>()?;
     let total_bytes = total_bytes_for_drive(drive)?;
 
     let mut progress = RecoveryProgress {
@@ -29,7 +33,14 @@ pub fn run_scan(
     };
     write_progress(result_path, &progress)?;
 
-    match scan_volume(drive, destination, &enabled_types, total_bytes, result_path, &mut progress) {
+    match scan_volume(
+        drive,
+        destination,
+        &enabled_types,
+        total_bytes,
+        result_path,
+        &mut progress,
+    ) {
         Ok(()) => {
             progress.status = RecoveryStatus::Completed;
             write_progress(result_path, &progress)?;
@@ -45,7 +56,10 @@ pub fn run_scan(
 }
 
 fn total_bytes_for_drive(drive: &str) -> Result<u64, String> {
-    let normalized = drive.trim_end_matches('\\').trim_end_matches(':').to_uppercase();
+    let normalized = drive
+        .trim_end_matches('\\')
+        .trim_end_matches(':')
+        .to_uppercase();
     explorer_filesystem::list_drives()
         .into_iter()
         .find(|d| d.name.trim_end_matches(':').to_uppercase() == normalized)
@@ -61,13 +75,18 @@ fn write_extracted_file(
 ) -> Result<(), String> {
     let subfolder = file_type.subfolder();
     let dir = Path::new(destination).join(subfolder);
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create '{}': {e}", dir.display()))?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| format!("Could not create '{}': {e}", dir.display()))?;
 
-    let count = progress.files_found_by_type.entry(subfolder.to_string()).or_insert(0);
+    let count = progress
+        .files_found_by_type
+        .entry(subfolder.to_string())
+        .or_insert(0);
     *count += 1;
     let filename = format!("recovered_{:04}.{}", count, file_type.extension());
     let file_path = dir.join(filename);
-    std::fs::write(&file_path, data).map_err(|e| format!("Could not write '{}': {e}", file_path.display()))
+    std::fs::write(&file_path, data)
+        .map_err(|e| format!("Could not write '{}': {e}", file_path.display()))
 }
 
 #[cfg(windows)]
@@ -81,10 +100,14 @@ fn scan_volume(
 ) -> Result<(), String> {
     use windows_sys::Win32::Foundation::{CloseHandle, GENERIC_READ, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::Storage::FileSystem::{
-        CreateFileW, ReadFile, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
+        CreateFileW, ReadFile, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE,
+        OPEN_EXISTING,
     };
 
-    let letter = drive.trim_end_matches('\\').trim_end_matches(':').to_uppercase();
+    let letter = drive
+        .trim_end_matches('\\')
+        .trim_end_matches(':')
+        .to_uppercase();
     let raw_path = format!(r"\\.\{letter}:");
     let wide: Vec<u16> = raw_path.encode_utf16().chain(std::iter::once(0)).collect();
 
@@ -141,7 +164,9 @@ fn scan_volume(
 
             let min_search_start = carry.len().saturating_sub(MAX_START_MARKER_LEN - 1);
             let mut search_from = min_search_start;
-            while let Some((pos, file_type)) = find_earliest_start(&combined, search_from, enabled_types) {
+            while let Some((pos, file_type)) =
+                find_earliest_start(&combined, search_from, enabled_types)
+            {
                 let slice = &combined[pos..];
                 let extraction_len = find_extraction_length(slice, file_type);
                 write_extracted_file(destination, file_type, &slice[..extraction_len], progress)?;

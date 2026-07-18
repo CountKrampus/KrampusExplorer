@@ -7,8 +7,13 @@ pub enum FileType {
     Mp3,
 }
 
-pub const ALL_TYPES: [FileType; 5] =
-    [FileType::Jpeg, FileType::Png, FileType::Pdf, FileType::Zip, FileType::Mp3];
+pub const ALL_TYPES: [FileType; 5] = [
+    FileType::Jpeg,
+    FileType::Png,
+    FileType::Pdf,
+    FileType::Zip,
+    FileType::Mp3,
+];
 
 /// The longest start marker across every supported type (PNG's 8-byte magic) -- callers scanning
 /// consecutive chunks carry over this many bytes minus one from one chunk into the next so a
@@ -103,7 +108,7 @@ pub fn find_earliest_start(
         let mut pos = min_search_start;
         while pos + marker.len() <= data.len() {
             if &data[pos..pos + marker.len()] == marker {
-                if earliest.map_or(true, |(earliest_pos, _)| pos < earliest_pos) {
+                if earliest.is_none_or(|(earliest_pos, _)| pos < earliest_pos) {
                     earliest = Some((pos, file_type));
                 }
                 break;
@@ -172,14 +177,20 @@ mod tests {
     #[test]
     fn still_finds_a_marker_that_starts_exactly_at_min_search_start() {
         let data = [0x00, 0x00, 0x00, 0xFF, 0xD8, 0xFF];
-        assert_eq!(find_earliest_start(&data, 3, &ALL_TYPES), Some((3, FileType::Jpeg)));
+        assert_eq!(
+            find_earliest_start(&data, 3, &ALL_TYPES),
+            Some((3, FileType::Jpeg))
+        );
     }
 
     #[test]
     fn only_considers_enabled_types() {
         let data = [0xFF, 0xD8, 0xFF];
         assert_eq!(find_earliest_start(&data, 0, &[FileType::Png]), None);
-        assert_eq!(find_earliest_start(&data, 0, &[FileType::Jpeg]), Some((0, FileType::Jpeg)));
+        assert_eq!(
+            find_earliest_start(&data, 0, &[FileType::Jpeg]),
+            Some((0, FileType::Jpeg))
+        );
     }
 
     #[test]

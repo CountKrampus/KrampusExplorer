@@ -49,11 +49,18 @@ fn parse_recovery_scan_args(args: &[String]) -> Option<RecoveryScanArgs> {
     if !args.iter().any(|a| a == "--recovery-scan") {
         return None;
     }
-    let drive = args.iter().find_map(|a| a.strip_prefix("--drive=").map(String::from))?;
-    let destination = args.iter().find_map(|a| a.strip_prefix("--dest=").map(String::from))?;
-    let types = args.iter().find_map(|a| a.strip_prefix("--types=").map(String::from))?;
-    let result_file =
-        args.iter().find_map(|a| a.strip_prefix("--result-file=").map(String::from))?;
+    let drive = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--drive=").map(String::from))?;
+    let destination = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--dest=").map(String::from))?;
+    let types = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--types=").map(String::from))?;
+    let result_file = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--result-file=").map(String::from))?;
 
     Some(RecoveryScanArgs {
         drive,

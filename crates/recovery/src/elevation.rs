@@ -14,8 +14,8 @@ mod windows_impl {
         file_types: &[String],
         result_file: &str,
     ) -> Result<(), String> {
-        let exe = std::env::current_exe()
-            .map_err(|e| format!("Could not find own executable: {e}"))?;
+        let exe =
+            std::env::current_exe().map_err(|e| format!("Could not find own executable: {e}"))?;
         let exe_str = exe.to_string_lossy().to_string();
 
         let types_joined = file_types.join(",");

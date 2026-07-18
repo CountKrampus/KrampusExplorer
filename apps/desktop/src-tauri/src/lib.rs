@@ -114,7 +114,12 @@ pub fn run_elevated_terminal(cwd: Option<String>) {
 /// window, no webview. Progress and the final result are communicated back to the original
 /// (unelevated) app process only through the JSON file at `result_file`, which it polls via the
 /// `get_recovery_progress` Tauri command.
-pub fn run_recovery_scan(drive: String, destination: String, file_types: Vec<String>, result_file: String) {
+pub fn run_recovery_scan(
+    drive: String,
+    destination: String,
+    file_types: Vec<String>,
+    result_file: String,
+) {
     if let Err(e) = explorer_recovery::run_scan(&drive, &destination, &file_types, &result_file) {
         eprintln!("Recovery scan failed: {e}");
         std::process::exit(1);
