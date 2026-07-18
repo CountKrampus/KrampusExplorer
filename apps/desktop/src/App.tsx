@@ -7,6 +7,7 @@ import Sidebar from "./sidebar/Sidebar";
 import Explorer from "./explorer/Explorer";
 import PreviewPane from "./preview/PreviewPane";
 import ConflictDialog from "./components/ConflictDialog";
+import ConfirmDialogHost from "./components/ConfirmDialogHost";
 import TransferProgress from "./components/TransferProgress";
 import ToastContainer from "./components/ToastContainer";
 import SettingsPanel from "./settings/SettingsPanel";
@@ -136,6 +137,7 @@ function App() {
       </div>
       <StatusBar />
       <ConflictDialog />
+      <ConfirmDialogHost />
       <TransferProgress />
       <SettingsPanel />
       <CommandPalette />
