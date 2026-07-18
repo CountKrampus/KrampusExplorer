@@ -30,6 +30,7 @@ fuller examples covering most of the permissions below:
 - `examples/plugins/batch-rename/` — Find/Replace with live preview via `fs.list`/`fs.rename`
 - `examples/plugins/recycling-bin/` — browse/restore/purge the OS Recycle Bin via `fs.trash`/`ui.confirm`
 - `examples/plugins/clear-unnecessary-files/` — clears known junk locations via `system.paths`/`fs.trash`
+- `examples/plugins/recover-lost-data/` — signature-based file recovery via `system.drives`/`fs.recover`
 
 ## manifest.json
 
@@ -87,6 +88,8 @@ call, because ungranted methods simply don't exist on the object.
 | `fs.trash` | `api.listTrashItems()`, `api.restoreTrashItem(id)`, `api.purgeTrashItem(id)`, `api.emptyTrash()`, `api.deleteEntries(paths)` |
 | `ui.confirm` | `api.confirm(message)` |
 | `system.paths` | `api.getKnownFolder(folder)` |
+| `system.drives` | `api.listDrives()` |
+| `fs.recover` | `api.startRecoveryScan(drive, destination, fileTypes)`, `api.getRecoveryProgress(scanId)` |
 
 ### `registerSidebarPanel`
 
@@ -301,6 +304,32 @@ action, not something that takes input at invocation time.
   error) if that location can't be determined on this system. This is deliberately a closed set
   of identifiers, not a general environment-variable reader -- there's no way to use this to read
   something sensitive like an API-key env var.
+
+### `system.drives` methods
+
+- `listDrives(): Promise<DriveInfo[]>` — lists every detected drive, the same data the sidebar's
+  Drives section uses (`name`, `path`, `mountPoint`, `totalBytes`, `freeBytes`).
+
+### `fs.recover` methods
+
+- `startRecoveryScan(drive: string, destination: string, fileTypes: string[]): Promise<string>`
+  — starts a signature-based recovery scan of `drive` (e.g. `"D:"`), scanning for the given file
+  types (`"jpeg"`, `"png"`, `"pdf"`, `"zip"`, `"mp3"`) and writing recovered files into
+  `destination` under per-type subfolders (`destination/jpeg/recovered_0001.jpg`, etc.). Triggers
+  a Windows UAC elevation prompt -- the scan itself runs in a separate, elevated process, since
+  raw sector-level disk reads require Administrator rights. Resolves to an opaque scan id (pass
+  it to `getRecoveryProgress` verbatim; don't parse or rely on its format) once the elevated
+  process has been launched -- it does not wait for the scan to finish.
+- `getRecoveryProgress(scanId: string): Promise<RecoveryProgress>` — polls the current state of a
+  scan started via `startRecoveryScan`. `RecoveryProgress` has `status` (`"running"` |
+  `"completed"` | `"failed"`), `bytesScanned`, `totalBytes`, `filesFoundByType` (keyed by
+  subfolder name), and `error` (only set when `status` is `"failed"`). Rejects if called before
+  the elevated process has written its first progress update -- a brief window right after
+  starting, not a real error; callers should tolerate it rather than treating it as fatal.
+
+Signature-based carving has no awareness of the original filesystem: recovered files lose their
+original names, folder structure, and timestamps, and success depends on whether the underlying
+disk sectors have been overwritten since deletion. The scan is read-only on the source drive.
 
 ## Plugin marketplace
 
