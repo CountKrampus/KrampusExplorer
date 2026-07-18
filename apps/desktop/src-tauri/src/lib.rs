@@ -28,6 +28,8 @@ pub fn run() {
             commands::restore_trash_item,
             commands::purge_trash_item,
             commands::empty_trash,
+            commands::get_known_folder,
+            commands::delete_entries,
             commands::create_folder,
             commands::create_file,
             commands::copy_entry,

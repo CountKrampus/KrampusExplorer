@@ -1,4 +1,6 @@
-use explorer_filesystem::{list_directory, list_drives, DirectoryListing, DriveInfo, TrashedItem};
+use explorer_filesystem::{
+    list_directory, list_drives, DirectoryListing, DriveInfo, KnownFolder, TrashedItem,
+};
 use explorer_plugins::{
     CommandOutput, FileHash, GitCommit, GitFileStatus, MultiHash, PluginFile, PluginManifest,
     ScannedFile, TableData,
@@ -65,6 +67,17 @@ pub fn purge_trash_item(id: String) -> Result<(), String> {
 #[tauri::command]
 pub fn empty_trash() -> Result<(), String> {
     explorer_filesystem::empty_trash()
+}
+
+#[tauri::command]
+pub fn get_known_folder(folder: String) -> Result<Option<String>, String> {
+    let known = KnownFolder::parse(&folder)?;
+    Ok(explorer_filesystem::get_known_folder(known))
+}
+
+#[tauri::command]
+pub fn delete_entries(paths: Vec<String>) -> Result<(), String> {
+    explorer_filesystem::delete_entries(&paths)
 }
 
 #[tauri::command]
