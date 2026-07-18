@@ -29,6 +29,7 @@ fuller examples covering most of the permissions below:
 - `examples/plugins/checksum-verifier/` — MD5/SHA-1/SHA-256 via `fs.scan`
 - `examples/plugins/batch-rename/` — Find/Replace with live preview via `fs.list`/`fs.rename`
 - `examples/plugins/recycling-bin/` — browse/restore/purge the OS Recycle Bin via `fs.trash`/`ui.confirm`
+- `examples/plugins/clear-unnecessary-files/` — clears known junk locations via `system.paths`/`fs.trash`
 
 ## manifest.json
 
@@ -83,8 +84,9 @@ call, because ungranted methods simply don't exist on the object.
 | `fs.list` | `api.listDirectory(path)` |
 | `fs.rename` | `api.renameEntry(path, newName)` |
 | `commands.register` | `api.registerCommand(command)` |
-| `fs.trash` | `api.listTrashItems()`, `api.restoreTrashItem(id)`, `api.purgeTrashItem(id)`, `api.emptyTrash()` |
+| `fs.trash` | `api.listTrashItems()`, `api.restoreTrashItem(id)`, `api.purgeTrashItem(id)`, `api.emptyTrash()`, `api.deleteEntries(paths)` |
 | `ui.confirm` | `api.confirm(message)` |
+| `system.paths` | `api.getKnownFolder(folder)` |
 
 ### `registerSidebarPanel`
 
@@ -280,6 +282,9 @@ action, not something that takes input at invocation time.
   Bin. Irreversible.
 - `emptyTrash(): Promise<void>` — permanently deletes everything currently in the Recycle Bin.
   Irreversible.
+- `deleteEntries(paths: string[]): Promise<void>` — sends every path in `paths` to the Recycle
+  Bin in one call. A directory path is moved as a whole; its contents don't need to be listed
+  first.
 
 ### `ui.confirm` methods
 
@@ -288,6 +293,14 @@ action, not something that takes input at invocation time.
   `message` and Confirm/Cancel buttons; resolves to whether the user confirmed. Only one
   confirmation can be shown at a time — a second call while one is already pending immediately
   resolves the earlier one to `false`.
+
+### `system.paths` methods
+
+- `getKnownFolder(folder: "temp" | "local_app_data" | "roaming_app_data" | "home"): Promise<string | null>`
+  — resolves one of a small fixed set of known system locations. Resolves to `null` (not an
+  error) if that location can't be determined on this system. This is deliberately a closed set
+  of identifiers, not a general environment-variable reader -- there's no way to use this to read
+  something sensitive like an API-key env var.
 
 ## Plugin marketplace
 

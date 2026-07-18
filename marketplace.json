@@ -48,5 +48,10 @@
     "id": "recycling-bin",
     "name": "Recycling Bin",
     "description": "Browse, restore, permanently delete, or empty the Windows Recycle Bin."
+  },
+  {
+    "id": "clear-unnecessary-files",
+    "name": "Clear Unnecessary Files",
+    "description": "Clears known junk locations (temp files, browser caches, dev tool caches)."
   }
 ]
