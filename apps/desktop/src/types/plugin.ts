@@ -99,6 +99,16 @@ export interface MultiHash {
   sha256: string;
 }
 
+export interface TrashedItem {
+  id: string;
+  name: string;
+  originalParent: string;
+  /** Unix epoch seconds. */
+  timeDeleted: number;
+  /** `null` if the size couldn't be determined for this item. */
+  sizeBytes: number | null;
+}
+
 export interface PluginApi {
   /** Present only if the plugin's manifest declares the "ui.sidebar" permission. */
   registerSidebarPanel?: (panel: PluginSidebarPanel) => void;
@@ -204,4 +214,21 @@ export interface PluginApi {
    * prompt. Elevation applies to the whole window, not individual tabs; the resulting window
    * is an independent OS process from the main app, not connected to it once open. */
   openElevatedTerminal?: () => Promise<void>;
+  /** Present only if the plugin's manifest declares the "ui.confirm" permission. Shows the
+   * app's own confirmation dialog with `message` and Confirm/Cancel buttons; resolves to
+   * whether the user confirmed. Only one confirmation can be shown at a time -- see
+   * useConfirmStore's `requestConfirm`. */
+  confirm?: (message: string) => Promise<boolean>;
+  /** Present only if the plugin's manifest declares the "fs.trash" permission. Lists everything
+   * currently in the OS Recycle Bin. */
+  listTrashItems?: () => Promise<TrashedItem[]>;
+  /** Present only if the plugin's manifest declares the "fs.trash" permission. Restores one
+   * item (by its `id` from `listTrashItems`) to its original location. */
+  restoreTrashItem?: (id: string) => Promise<void>;
+  /** Present only if the plugin's manifest declares the "fs.trash" permission. Permanently
+   * deletes one item from the Recycle Bin -- irreversible. */
+  purgeTrashItem?: (id: string) => Promise<void>;
+  /** Present only if the plugin's manifest declares the "fs.trash" permission. Permanently
+   * deletes everything currently in the Recycle Bin -- irreversible. */
+  emptyTrash?: () => Promise<void>;
 }

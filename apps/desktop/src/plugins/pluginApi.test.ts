@@ -45,6 +45,11 @@ function handlers(): PluginApiHandlers {
     renameEntry: vi.fn().mockResolvedValue("C:\\new-name.txt"),
     openTerminal: vi.fn().mockResolvedValue(undefined),
     openElevatedTerminal: vi.fn().mockResolvedValue(undefined),
+    confirm: vi.fn().mockResolvedValue(true),
+    listTrashItems: vi.fn().mockResolvedValue([]),
+    restoreTrashItem: vi.fn().mockResolvedValue(undefined),
+    purgeTrashItem: vi.fn().mockResolvedValue(undefined),
+    emptyTrash: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -67,6 +72,8 @@ describe("createPluginApi", () => {
     "fs.rename",
     "commands.register",
     "ui.terminal",
+    "ui.confirm",
+    "fs.trash",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -97,6 +104,11 @@ describe("createPluginApi", () => {
     "registerCommand",
     "openTerminal",
     "openElevatedTerminal",
+    "confirm",
+    "listTrashItems",
+    "restoreTrashItem",
+    "purgeTrashItem",
+    "emptyTrash",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -132,6 +144,8 @@ describe("createPluginApi", () => {
     ["fs.rename", ["renameEntry"]],
     ["commands.register", ["registerCommand"]],
     ["ui.terminal", ["openTerminal", "openElevatedTerminal"]],
+    ["ui.confirm", ["confirm"]],
+    ["fs.trash", ["listTrashItems", "restoreTrashItem", "purgeTrashItem", "emptyTrash"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -260,5 +274,23 @@ describe("createPluginApi", () => {
     await api.openElevatedTerminal?.();
 
     expect(h.openElevatedTerminal).toHaveBeenCalledWith();
+  });
+
+  it("confirm calls the handler with the message", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["ui.confirm"]), h);
+
+    await api.confirm?.("Are you sure?");
+
+    expect(h.confirm).toHaveBeenCalledWith("Are you sure?");
+  });
+
+  it("purgeTrashItem calls the handler with the id", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["fs.trash"]), h);
+
+    await api.purgeTrashItem?.("some-id");
+
+    expect(h.purgeTrashItem).toHaveBeenCalledWith("some-id");
   });
 });

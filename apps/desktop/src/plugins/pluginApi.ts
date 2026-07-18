@@ -14,6 +14,7 @@ import type {
   PluginToolbarButton,
   ScannedFile,
   SqliteTable,
+  TrashedItem,
 } from "../types/plugin";
 
 export interface PluginApiHandlers {
@@ -55,6 +56,11 @@ export interface PluginApiHandlers {
   renameEntry: (path: string, newName: string) => Promise<string>;
   openTerminal: () => Promise<void>;
   openElevatedTerminal: () => Promise<void>;
+  confirm: (message: string) => Promise<boolean>;
+  listTrashItems: () => Promise<TrashedItem[]>;
+  restoreTrashItem: (id: string) => Promise<void>;
+  purgeTrashItem: (id: string) => Promise<void>;
+  emptyTrash: () => Promise<void>;
 }
 
 /**
@@ -130,6 +136,15 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
   if (has("ui.terminal")) {
     api.openTerminal = () => handlers.openTerminal();
     api.openElevatedTerminal = () => handlers.openElevatedTerminal();
+  }
+  if (has("ui.confirm")) {
+    api.confirm = (message) => handlers.confirm(message);
+  }
+  if (has("fs.trash")) {
+    api.listTrashItems = () => handlers.listTrashItems();
+    api.restoreTrashItem = (id) => handlers.restoreTrashItem(id);
+    api.purgeTrashItem = (id) => handlers.purgeTrashItem(id);
+    api.emptyTrash = () => handlers.emptyTrash();
   }
 
   return api;
