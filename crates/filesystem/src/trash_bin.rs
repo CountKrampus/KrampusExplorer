@@ -65,12 +65,34 @@ pub fn empty_trash() -> Result<(), String> {
     purge_all(items).map_err(|e| format!("Could not empty the Recycle Bin: {e}"))
 }
 
-/// Sends every path in `paths` to the Recycle Bin in a single call, rather than one round-trip
-/// per file -- important since a temp folder or browser cache can hold thousands of entries, and
-/// per-file IPC calls would be both slow and (for a very large folder) a large-message-count
-/// risk similar to the search/scan issues fixed earlier (see `SEARCH_RESULT_CAP`/`SCAN_FILE_CAP`
-/// in `crates/search`/`crates/plugins`). A directory path in `paths` is moved to the Recycle Bin
-/// as a whole (its contents don't need to be enumerated by the caller first).
+/// Sends every path in `paths` to the Recycle Bin, in a single IPC call from the caller's
+/// perspective (important since a temp folder or browser cache can hold thousands of entries --
+/// one round-trip per file would be both slow and a large-message-count risk similar to the
+/// search/scan issues fixed earlier, see `SEARCH_RESULT_CAP`/`SCAN_FILE_CAP` in
+/// `crates/search`/`crates/plugins`). A directory path in `paths` is moved to the Recycle Bin as
+/// a whole (its contents don't need to be enumerated by the caller first).
+///
+/// Deletes one path at a time internally (rather than a single `trash::delete_all` call) so that
+/// one locked/in-use file -- routine in a live temp folder, since running processes constantly
+/// hold temp files open -- doesn't block every other file from being deleted. `delete_all`
+/// reports the whole batch as failed even when it silently succeeded for almost everything,
+/// which is misleading. This only returns an error if literally every path failed; a partial
+/// failure (some files skipped because they're in use) is treated as success, since the caller
+/// re-scans afterward and will naturally see whatever's left.
 pub fn delete_entries(paths: &[String]) -> Result<(), String> {
-    trash::delete_all(paths).map_err(|e| format!("Could not delete entries: {e}"))
+    if paths.is_empty() {
+        return Ok(());
+    }
+    let failures = paths
+        .iter()
+        .filter(|path| trash::delete(path).is_err())
+        .count();
+    if failures == paths.len() {
+        Err(format!(
+            "Could not delete any of the {} entries -- they may be in use or already gone",
+            paths.len()
+        ))
+    } else {
+        Ok(())
+    }
 }
