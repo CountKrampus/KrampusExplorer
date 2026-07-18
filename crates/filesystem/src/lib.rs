@@ -9,7 +9,7 @@ mod operations;
 mod trash_bin;
 
 pub use drives::{list_drives, DriveInfo};
-pub use format::{drive_letter_to_index, get_system_drive, is_system_drive, FormatOutcome};
+pub use format::{drive_letter_to_index, format_drive, get_system_drive, is_system_drive, FormatOutcome};
 pub use home::default_start_path;
 pub use known_folders::{get_known_folder, KnownFolder};
 pub use listing::{list_directory, DirectoryListing, EntryInfo};

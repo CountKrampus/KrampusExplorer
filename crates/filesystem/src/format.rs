@@ -41,6 +41,48 @@ pub fn is_system_drive(drive: &str) -> bool {
     }
 }
 
+/// Opens Windows' own native Format dialog for `drive`, parented to the window whose raw handle
+/// is `hwnd` (an `isize` -- see the Tauri command in `commands.rs` for why it crosses the
+/// `spawn_blocking` boundary as an isize rather than a raw pointer, which isn't `Send`).
+///
+/// Refuses up front if `drive` is the system drive -- defense in depth alongside the frontend's
+/// own dropdown filtering (see the plugin's `getSystemDrive`/`listDrives` usage) and Windows'
+/// own refusal inside `SHFormatDrive` itself. Two independent checks both have to fail in the
+/// same direction for the system drive to ever be at risk.
+///
+/// `SHFMT_CANCEL` (the user backed out of the native dialog) and `SHFMT_NOFORMAT` (Windows
+/// itself declined, e.g. because the drive turned out to be unformattable for some reason) are
+/// normal, successful outcomes -- only a genuine `SHFMT_ERROR` is treated as a real failure.
+#[cfg(windows)]
+pub fn format_drive(drive: &str, hwnd: isize) -> Result<FormatOutcome, String> {
+    use windows_sys::Win32::Foundation::HWND;
+    use windows_sys::Win32::UI::Shell::{
+        SHFormatDrive, SHFMT_CANCEL, SHFMT_ERROR, SHFMT_ID_DEFAULT, SHFMT_NOFORMAT, SHFMT_OPT_NONE,
+    };
+
+    if is_system_drive(drive) {
+        return Err(format!("Refusing to format the system drive '{drive}'"));
+    }
+    let index = drive_letter_to_index(drive)?;
+
+    // SAFETY: `hwnd` is either a valid window handle obtained from the calling Tauri window, or
+    // 0 (no parent) -- both are valid inputs to SHFormatDrive, which is a standard Win32 Shell
+    // API. It shows a modal dialog and blocks the calling thread until the user dismisses it.
+    let result = unsafe { SHFormatDrive(hwnd as HWND, index, SHFMT_ID_DEFAULT, SHFMT_OPT_NONE as u32) };
+
+    match result {
+        SHFMT_ERROR => Err("The format operation failed".to_string()),
+        SHFMT_CANCEL => Ok(FormatOutcome::Cancelled),
+        SHFMT_NOFORMAT => Ok(FormatOutcome::NoFormat),
+        _ => Ok(FormatOutcome::Formatted),
+    }
+}
+
+#[cfg(not(windows))]
+pub fn format_drive(_drive: &str, _hwnd: isize) -> Result<FormatOutcome, String> {
+    Err("Drive formatting is only supported on Windows".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
