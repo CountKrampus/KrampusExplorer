@@ -20,6 +20,8 @@ function formatSize(bytes) {
 // past a sane cap, and chunking everything under it, keeps every IPC message a bounded size.
 const MAX_CANDIDATES = 20000;
 const HASH_CHUNK_SIZE = 1000;
+/** Must match crates/plugins/src/scan.rs's SCAN_FILE_CAP. */
+const SCAN_FILE_CAP = 50000;
 
 api.registerSidebarPanel({
   id: "duplicate-finder",
@@ -60,15 +62,15 @@ api.registerSidebarPanel({
     results.style.maxHeight = "360px";
     results.style.overflowY = "auto";
 
-    function renderGroups(groups) {
+    function renderGroups(groups, truncatedNote) {
       results.innerHTML = "";
       if (groups.length === 0) {
-        setStatus("No duplicates found.", false);
+        setStatus(`No duplicates found.${truncatedNote}`, false);
         return;
       }
       const totalWasted = groups.reduce((sum, g) => sum + g.size * (g.paths.length - 1), 0);
       setStatus(
-        `${groups.length} duplicate group${groups.length === 1 ? "" : "s"} — ${formatSize(totalWasted)} wasted`,
+        `${groups.length} duplicate group${groups.length === 1 ? "" : "s"} — ${formatSize(totalWasted)} wasted${truncatedNote}`,
         false,
       );
 
@@ -136,6 +138,10 @@ api.registerSidebarPanel({
       setStatus("Scanning…", false);
       try {
         const files = await api.scanDirectory(root);
+        const truncatedNote =
+          files.length === SCAN_FILE_CAP
+            ? ` (scanned first ${SCAN_FILE_CAP.toLocaleString()} files -- results may be incomplete, try a narrower folder)`
+            : "";
 
         // Group by size first — hashing every file would be wasteful when most files have a
         // unique size and therefore can't possibly be duplicates of anything.
@@ -151,14 +157,14 @@ api.registerSidebarPanel({
         }
 
         if (candidates.length === 0) {
-          renderGroups([]);
+          renderGroups([], truncatedNote);
           return;
         }
 
         if (candidates.length > MAX_CANDIDATES) {
           setStatus(
             `Found ${candidates.length} same-size candidates — that's too many to hash in one folder ` +
-              `(limit ${MAX_CANDIDATES}). Try scanning a narrower folder instead of a whole drive.`,
+              `(limit ${MAX_CANDIDATES}). Try scanning a narrower folder instead of a whole drive.${truncatedNote}`,
             true,
           );
           return;
@@ -187,7 +193,7 @@ api.registerSidebarPanel({
         }
         groups.sort((a, b) => b.size * (b.paths.length - 1) - a.size * (a.paths.length - 1));
 
-        renderGroups(groups);
+        renderGroups(groups, truncatedNote);
       } catch (error) {
         setStatus(String(error), true);
       } finally {
