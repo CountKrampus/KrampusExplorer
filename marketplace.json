@@ -58,5 +58,10 @@
     "id": "recover-lost-data",
     "name": "Recover Lost Data",
     "description": "Scans a drive for recoverable JPEG/PNG/PDF/ZIP/MP3 files (requires Administrator)."
+  },
+  {
+    "id": "drive-format",
+    "name": "Drive Format",
+    "description": "Format a drive via Windows' own native Format dialog. Permanently erases data."
   }
 ]

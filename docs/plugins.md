@@ -31,6 +31,7 @@ fuller examples covering most of the permissions below:
 - `examples/plugins/recycling-bin/` — browse/restore/purge the OS Recycle Bin via `fs.trash`/`ui.confirm`
 - `examples/plugins/clear-unnecessary-files/` — clears known junk locations via `system.paths`/`fs.trash`
 - `examples/plugins/recover-lost-data/` — signature-based file recovery via `system.drives`/`fs.recover`
+- `examples/plugins/drive-format/` — hands off to Windows' native Format dialog via `fs.format`
 
 ## manifest.json
 
@@ -90,6 +91,7 @@ call, because ungranted methods simply don't exist on the object.
 | `system.paths` | `api.getKnownFolder(folder)` |
 | `system.drives` | `api.listDrives()` |
 | `fs.recover` | `api.startRecoveryScan(drive, destination, fileTypes)`, `api.getRecoveryProgress(scanId)` |
+| `fs.format` | `api.getSystemDrive()`, `api.formatDrive(drive)` |
 
 ### `registerSidebarPanel`
 
@@ -330,6 +332,23 @@ action, not something that takes input at invocation time.
 Signature-based carving has no awareness of the original filesystem: recovered files lose their
 original names, folder structure, and timestamps, and success depends on whether the underlying
 disk sectors have been overwritten since deletion. The scan is read-only on the source drive.
+
+### `fs.format` methods
+
+- `getSystemDrive(): Promise<string | null>` — the system/boot drive (e.g. `"C:"`), or `null` if
+  it couldn't be determined. Use this to exclude it from any drive picker -- `formatDrive`
+  independently refuses it too, but a plugin should never even offer it as a selectable option.
+- `formatDrive(drive: string): Promise<"formatted" | "cancelled" | "noFormat">` — opens Windows'
+  own native Format dialog for `drive` and resolves once it closes. **Permanently destroys all
+  data on the drive if the user completes the dialog.** `"cancelled"` (the user backed out of the
+  native dialog) and `"noFormat"` (Windows itself declined) are normal outcomes, not errors --
+  only a rejected promise represents a genuine failure. Refuses up front (rejected promise) if
+  `drive` is the system drive.
+
+This plugin does not implement formatting itself; it hands off entirely to Windows' own native
+Format dialog, which handles filesystem type, allocation unit, volume label, and
+quick-vs-full-format choice. See `examples/plugins/drive-format/` for the reference
+implementation, including the confirmation flow expected before calling `formatDrive`.
 
 ## Plugin marketplace
 
