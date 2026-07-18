@@ -91,11 +91,16 @@ Sidebar panel:
 
 ## Testing
 
-- Rust: unit tests for the four new commands against a real (test-created-and-deleted) file,
-  following the existing `crates/filesystem` test conventions — delete a temp file via
-  `trash::delete` (already used by `delete_entry`), confirm it shows up in `list_trash_items`,
-  confirm `restore_trash_item` puts it back, confirm `purge_trash_item`/`empty_trash` remove it
-  from the listing.
+- Rust: **no automated tests for the trash-interaction functions themselves.** The existing
+  `delete_entry` (`crates/filesystem/src/operations.rs`), which already wraps `trash::delete`,
+  has zero automated tests — deliberately, since exercising it for real deletes actual files into
+  the user's real Windows Recycle Bin on every `cargo test` run, and the `trash` crate has no
+  fake/injectable trash directory to redirect that into. The four new functions
+  (`list_trash_items`/`restore_trash_item`/`purge_trash_item`/`empty_trash`) follow the same
+  precedent for the same reason — verified by hand instead (see the plugin's own manual
+  verification below). Any pure, non-trash-touching logic extracted from these functions (e.g. a
+  standalone `find_by_id` helper, if one is written as a separate function) can still get a real
+  unit test if it doesn't require calling into the `trash` crate itself.
 - `useConfirmStore`: unit tests for the request/resolve state machine (pure store logic, no DOM).
   `useToastStore` (the closest existing analog — also a global store backing a single rendered
   component) has no test file, but its behavior is a trivial timer side effect; `useConfirmStore`
