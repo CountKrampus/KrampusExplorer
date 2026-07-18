@@ -4,6 +4,7 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { createPluginApi } from "../plugins/pluginApi";
 import { useExplorerStore } from "./useExplorerStore";
 import { useSettingsStore } from "./useSettingsStore";
+import { useConfirmStore } from "./useConfirmStore";
 import type { DirectoryListing } from "../types/filesystem";
 import type {
   CommandOutput,
@@ -19,6 +20,7 @@ import type {
   PluginToolbarButton,
   ScannedFile,
   SqliteTable,
+  TrashedItem,
 } from "../types/plugin";
 
 export interface RegisteredSidebarPanel extends PluginSidebarPanel {
@@ -197,6 +199,11 @@ export const usePluginStore = create<PluginState>((set) => ({
           openTerminal: () => invoke<void>("open_terminal_window", { cwd: getCurrentFolderPath() }),
           openElevatedTerminal: () =>
             invoke<void>("open_elevated_terminal_window", { cwd: getCurrentFolderPath() }),
+          confirm: (message) => useConfirmStore.getState().requestConfirm(message),
+          listTrashItems: () => invoke<TrashedItem[]>("list_trash_items"),
+          restoreTrashItem: (id) => invoke<void>("restore_trash_item", { id }),
+          purgeTrashItem: (id) => invoke<void>("purge_trash_item", { id }),
+          emptyTrash: () => invoke<void>("empty_trash"),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.
