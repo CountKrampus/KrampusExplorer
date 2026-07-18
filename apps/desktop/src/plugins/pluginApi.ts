@@ -67,6 +67,8 @@ export interface PluginApiHandlers {
   listDrives: () => Promise<DriveInfo[]>;
   startRecoveryScan: (drive: string, destination: string, fileTypes: string[]) => Promise<string>;
   getRecoveryProgress: (scanId: string) => Promise<RecoveryProgress>;
+  getSystemDrive: () => Promise<string | null>;
+  formatDrive: (drive: string) => Promise<"formatted" | "cancelled" | "noFormat">;
 }
 
 /**
@@ -163,6 +165,10 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
     api.startRecoveryScan = (drive, destination, fileTypes) =>
       handlers.startRecoveryScan(drive, destination, fileTypes);
     api.getRecoveryProgress = (scanId) => handlers.getRecoveryProgress(scanId);
+  }
+  if (has("fs.format")) {
+    api.getSystemDrive = () => handlers.getSystemDrive();
+    api.formatDrive = (drive) => handlers.formatDrive(drive);
   }
 
   return api;

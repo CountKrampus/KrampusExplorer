@@ -61,6 +61,8 @@ function handlers(): PluginApiHandlers {
       filesFoundByType: {},
       error: null,
     } satisfies RecoveryProgress),
+    getSystemDrive: vi.fn().mockResolvedValue("C:"),
+    formatDrive: vi.fn().mockResolvedValue("formatted"),
   };
 }
 
@@ -88,6 +90,7 @@ describe("createPluginApi", () => {
     "system.paths",
     "system.drives",
     "fs.recover",
+    "fs.format",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -128,6 +131,8 @@ describe("createPluginApi", () => {
     "listDrives",
     "startRecoveryScan",
     "getRecoveryProgress",
+    "getSystemDrive",
+    "formatDrive",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -168,6 +173,7 @@ describe("createPluginApi", () => {
     ["system.paths", ["getKnownFolder"]],
     ["system.drives", ["listDrives"]],
     ["fs.recover", ["startRecoveryScan", "getRecoveryProgress"]],
+    ["fs.format", ["getSystemDrive", "formatDrive"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -350,5 +356,23 @@ describe("createPluginApi", () => {
     await api.getRecoveryProgress?.("C:\\Temp\\krampus-recovery-123.json");
 
     expect(h.getRecoveryProgress).toHaveBeenCalledWith("C:\\Temp\\krampus-recovery-123.json");
+  });
+
+  it("getSystemDrive calls the handler with no arguments", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["fs.format"]), h);
+
+    await api.getSystemDrive?.();
+
+    expect(h.getSystemDrive).toHaveBeenCalledWith();
+  });
+
+  it("formatDrive calls the handler with the drive", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["fs.format"]), h);
+
+    await api.formatDrive?.("D:");
+
+    expect(h.formatDrive).toHaveBeenCalledWith("D:");
   });
 });

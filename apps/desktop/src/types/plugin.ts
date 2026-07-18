@@ -267,4 +267,15 @@ export interface PluginApi {
    * elevated process has written its first progress update -- callers should tolerate a brief
    * initial failure window rather than treating it as fatal. */
   getRecoveryProgress?: (scanId: string) => Promise<RecoveryProgress>;
+  /** Present only if the plugin's manifest declares the "fs.format" permission. The system/boot
+   * drive (e.g. "C:"), or `null` if it couldn't be determined. Use this to exclude it from any
+   * drive picker -- the backend's own `formatDrive` independently refuses it too, but a plugin
+   * should never even offer it as a selectable option. */
+  getSystemDrive?: () => Promise<string | null>;
+  /** Present only if the plugin's manifest declares the "fs.format" permission. Opens Windows'
+   * own native Format dialog for `drive` (e.g. "D:") and resolves once it closes. Refuses (with
+   * a rejected promise) if `drive` is the system drive. `"cancelled"` and `"noFormat"` are
+   * normal outcomes -- the user backed out of the native dialog, or Windows itself declined --
+   * not errors. */
+  formatDrive?: (drive: string) => Promise<"formatted" | "cancelled" | "noFormat">;
 }
