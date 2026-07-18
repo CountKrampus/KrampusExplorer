@@ -8,6 +8,7 @@ members = [
     "crates/plugins",
     "crates/settings",
     "crates/terminal",
+    "crates/recovery",
     "apps/desktop/src-tauri",
 ]
 
