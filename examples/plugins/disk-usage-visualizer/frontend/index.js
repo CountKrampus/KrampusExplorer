@@ -6,6 +6,9 @@
 // for (registerSidebarPanel: "ui.sidebar", getCurrentPath/onFolderChange: "nav.read",
 // scanDirectory: "fs.scan").
 
+/** Must match crates/plugins/src/scan.rs's SCAN_FILE_CAP. */
+const SCAN_FILE_CAP = 50000;
+
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -91,7 +94,14 @@ api.registerSidebarPanel({
         }
 
         const entries = [...bySegment.entries()].sort((a, b) => b[1] - a[1]);
-        setStatus(`${formatSize(total)} total across ${entries.length} item${entries.length === 1 ? "" : "s"}`, false);
+        const truncatedNote =
+          files.length === SCAN_FILE_CAP
+            ? ` (scanned first ${SCAN_FILE_CAP.toLocaleString()} files -- results may be incomplete, try a narrower folder)`
+            : "";
+        setStatus(
+          `${formatSize(total)} total across ${entries.length} item${entries.length === 1 ? "" : "s"}${truncatedNote}`,
+          false,
+        );
 
         const max = entries[0][1];
         for (const [name, size] of entries) {
