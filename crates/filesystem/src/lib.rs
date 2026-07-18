@@ -2,12 +2,14 @@
 
 mod drives;
 mod home;
+mod known_folders;
 mod listing;
 mod operations;
 mod trash_bin;
 
 pub use drives::{list_drives, DriveInfo};
 pub use home::default_start_path;
+pub use known_folders::{get_known_folder, KnownFolder};
 pub use listing::{list_directory, DirectoryListing, EntryInfo};
 pub use operations::{
     copy_entry, copy_entry_reporting, create_file, create_folder, delete_entry, move_entry,
