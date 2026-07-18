@@ -117,7 +117,10 @@ pub fn get_system_drive() -> Option<String> {
 /// pointer); `.0 as isize` converts it to a `Send`-able integer that can cross into the
 /// `spawn_blocking` closure, then back to a pointer-typed HWND inside `format_drive` itself.
 #[tauri::command]
-pub async fn format_drive(window: tauri::WebviewWindow, drive: String) -> Result<FormatOutcome, String> {
+pub async fn format_drive(
+    window: tauri::WebviewWindow,
+    drive: String,
+) -> Result<FormatOutcome, String> {
     let hwnd = window
         .hwnd()
         .map_err(|e| format!("Could not get the window handle: {e}"))?

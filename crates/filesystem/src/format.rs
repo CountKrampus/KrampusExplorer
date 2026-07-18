@@ -11,9 +11,14 @@ pub enum FormatOutcome {
 /// Converts a drive letter like "D:" or "d" to the zero-based index `SHFormatDrive` expects
 /// (A=0, B=1, C=2, D=3, ...).
 pub fn drive_letter_to_index(drive: &str) -> Result<u32, String> {
-    let letter = drive.trim_end_matches('\\').trim_end_matches(':').to_uppercase();
+    let letter = drive
+        .trim_end_matches('\\')
+        .trim_end_matches(':')
+        .to_uppercase();
     let mut chars = letter.chars();
-    let ch = chars.next().ok_or_else(|| format!("Invalid drive '{drive}'"))?;
+    let ch = chars
+        .next()
+        .ok_or_else(|| format!("Invalid drive '{drive}'"))?;
     if chars.next().is_some() || !ch.is_ascii_alphabetic() {
         return Err(format!("Invalid drive '{drive}'"));
     }
@@ -28,7 +33,10 @@ pub fn get_system_drive() -> Option<String> {
 }
 
 fn normalize_drive(drive: &str) -> String {
-    drive.trim_end_matches('\\').trim_end_matches(':').to_uppercase()
+    drive
+        .trim_end_matches('\\')
+        .trim_end_matches(':')
+        .to_uppercase()
 }
 
 /// True if `drive` is the system/boot drive. This is the authoritative, backend-side check --
@@ -68,7 +76,8 @@ pub fn format_drive(drive: &str, hwnd: isize) -> Result<FormatOutcome, String> {
     // SAFETY: `hwnd` is either a valid window handle obtained from the calling Tauri window, or
     // 0 (no parent) -- both are valid inputs to SHFormatDrive, which is a standard Win32 Shell
     // API. It shows a modal dialog and blocks the calling thread until the user dismisses it.
-    let result = unsafe { SHFormatDrive(hwnd as HWND, index, SHFMT_ID_DEFAULT, SHFMT_OPT_NONE as u32) };
+    let result =
+        unsafe { SHFormatDrive(hwnd as HWND, index, SHFMT_ID_DEFAULT, SHFMT_OPT_NONE as u32) };
 
     match result {
         SHFMT_ERROR => Err("The format operation failed".to_string()),
@@ -128,7 +137,11 @@ mod tests {
     #[test]
     fn is_system_drive_rejects_a_different_drive() {
         let system_drive = get_system_drive().unwrap_or_default().to_uppercase();
-        let other = if system_drive.starts_with('C') { "D:" } else { "C:" };
+        let other = if system_drive.starts_with('C') {
+            "D:"
+        } else {
+            "C:"
+        };
         assert!(!is_system_drive(other));
     }
 }
