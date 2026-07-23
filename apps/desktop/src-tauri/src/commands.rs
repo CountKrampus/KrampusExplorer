@@ -6,6 +6,7 @@ use explorer_plugins::{
     CommandOutput, FileHash, GitCommit, GitFileStatus, MultiHash, PluginFile, PluginManifest,
     ScannedFile, TableData,
 };
+use explorer_partitions::{DiskInfo, PartitionInfo};
 use explorer_preview::TextPreview;
 use explorer_recovery::{read_progress, relaunch_recovery_scan, RecoveryProgress};
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
@@ -149,6 +150,85 @@ pub fn start_secure_wipe(drive: String) -> Result<String, String> {
 #[tauri::command]
 pub fn get_wipe_progress(wipe_id: String) -> Result<WipeProgress, String> {
     read_wipe_progress(std::path::Path::new(&wipe_id))
+}
+
+/// `async` because listing disks shells out to `powershell.exe` and waits for it to exit --
+/// `spawn_blocking` keeps that real wait off the async command-handler thread, the same pattern
+/// `format_drive` already uses for its own blocking native-dialog wait.
+#[tauri::command]
+pub async fn list_disks() -> Result<Vec<DiskInfo>, String> {
+    tauri::async_runtime::spawn_blocking(explorer_partitions::list_disks)
+        .await
+        .map_err(|e| format!("Listing disks panicked: {e}"))?
+}
+
+#[tauri::command]
+pub async fn create_partition(
+    disk_number: u32,
+    offset_bytes: u64,
+    size_bytes: u64,
+    filesystem: String,
+    drive_letter: Option<String>,
+) -> Result<PartitionInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        explorer_partitions::new_partition(
+            disk_number,
+            offset_bytes,
+            size_bytes,
+            &filesystem,
+            drive_letter.as_deref(),
+        )
+    })
+    .await
+    .map_err(|e| format!("Create partition task panicked: {e}"))?
+}
+
+#[tauri::command]
+pub async fn delete_partition(disk_number: u32, drive_letter: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        explorer_partitions::delete_partition(disk_number, &drive_letter)
+    })
+    .await
+    .map_err(|e| format!("Delete partition task panicked: {e}"))?
+}
+
+#[tauri::command]
+pub async fn resize_partition(
+    disk_number: u32,
+    drive_letter: String,
+    new_size_bytes: u64,
+) -> Result<PartitionInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        explorer_partitions::resize_partition(disk_number, &drive_letter, new_size_bytes)
+    })
+    .await
+    .map_err(|e| format!("Resize partition task panicked: {e}"))?
+}
+
+#[tauri::command]
+pub async fn format_partition(
+    disk_number: u32,
+    drive_letter: String,
+    filesystem: String,
+) -> Result<PartitionInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        explorer_partitions::format_partition(disk_number, &drive_letter, &filesystem)
+    })
+    .await
+    .map_err(|e| format!("Format partition task panicked: {e}"))?
+}
+
+#[tauri::command]
+pub async fn set_drive_letter(
+    disk_number: u32,
+    current_letter: String,
+    new_letter: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        explorer_partitions::set_drive_letter(disk_number, &current_letter, new_letter.as_deref())
+    })
+    .await
+    .map_err(|e| format!("Set drive letter task panicked: {e}"))?
 }
 
 #[tauri::command]
