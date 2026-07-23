@@ -100,7 +100,8 @@ fn ensure_not_system_disk(disk_number: u32) -> Result<(), String> {
         Some(system_number) if system_number == disk_number => Err(format!(
             "Refusing to modify disk {disk_number} -- it holds the system drive"
         )),
-        _ => Ok(()),
+        Some(_) => Ok(()),
+        None => Err("Could not determine the system disk -- refusing the action".to_string()),
     }
 }
 
