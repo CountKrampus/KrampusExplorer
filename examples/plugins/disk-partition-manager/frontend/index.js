@@ -163,6 +163,29 @@ api.registerSidebarPanel({
         }),
       );
 
+      const resizeBtn = document.createElement("button");
+      resizeBtn.textContent = "Resize…";
+      resizeBtn.addEventListener("click", () => {
+        const input = window.prompt("New size in GB:", "");
+        if (input === null) return;
+        const newSizeGb = Number(input);
+        if (!Number.isFinite(newSizeGb) || newSizeGb <= 0) {
+          setStatus("Enter a valid positive size in GB.", true);
+          return;
+        }
+        const newSizeBytes = newSizeGb * 1024 * 1024 * 1024;
+
+        actionPanel.appendChild(
+          buildTypedConfirmAction({
+            label: "Resize Partition",
+            confirmText: partition.driveLetter ?? "DELETE",
+            run: () => api.resizePartition(disk.number, partition.driveLetter, newSizeBytes),
+            successMessage: "Partition resized.",
+          }),
+        );
+      });
+      actionPanel.appendChild(resizeBtn);
+
       const letterBtn = document.createElement("button");
       letterBtn.textContent = "Change Drive Letter…";
       letterBtn.addEventListener("click", async () => {
