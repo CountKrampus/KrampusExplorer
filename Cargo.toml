@@ -9,6 +9,7 @@ members = [
     "crates/settings",
     "crates/terminal",
     "crates/recovery",
+    "crates/wipe",
     "apps/desktop/src-tauri",
 ]
 
