@@ -2,11 +2,11 @@ use explorer_filesystem::{
     list_directory, list_drives, DirectoryListing, DriveInfo, FormatOutcome, KnownFolder,
     TrashedItem,
 };
+use explorer_partitions::{DiskInfo, PartitionInfo};
 use explorer_plugins::{
     CommandOutput, FileHash, GitCommit, GitFileStatus, MultiHash, PluginFile, PluginManifest,
     ScannedFile, TableData,
 };
-use explorer_partitions::{DiskInfo, PartitionInfo};
 use explorer_preview::TextPreview;
 use explorer_recovery::{read_progress, relaunch_recovery_scan, RecoveryProgress};
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
