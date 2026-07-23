@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPluginApi, type PluginApiHandlers } from "./pluginApi";
-import type { PluginManifest, RecoveryProgress } from "../types/plugin";
+import type { PluginManifest, RecoveryProgress, WipeProgress } from "../types/plugin";
 
 function manifest(permissions: string[]): PluginManifest {
   return {
@@ -63,6 +63,13 @@ function handlers(): PluginApiHandlers {
     } satisfies RecoveryProgress),
     getSystemDrive: vi.fn().mockResolvedValue("C:"),
     formatDrive: vi.fn().mockResolvedValue("formatted"),
+    startSecureWipe: vi.fn().mockResolvedValue("C:\\Temp\\krampus-wipe-123.json"),
+    getWipeProgress: vi.fn().mockResolvedValue({
+      status: "running",
+      bytesWritten: 0,
+      totalBytes: 100,
+      error: null,
+    } satisfies WipeProgress),
   };
 }
 
@@ -91,6 +98,7 @@ describe("createPluginApi", () => {
     "system.drives",
     "fs.recover",
     "fs.format",
+    "fs.wipe",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -133,6 +141,8 @@ describe("createPluginApi", () => {
     "getRecoveryProgress",
     "getSystemDrive",
     "formatDrive",
+    "startSecureWipe",
+    "getWipeProgress",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -174,6 +184,7 @@ describe("createPluginApi", () => {
     ["system.drives", ["listDrives"]],
     ["fs.recover", ["startRecoveryScan", "getRecoveryProgress"]],
     ["fs.format", ["getSystemDrive", "formatDrive"]],
+    ["fs.wipe", ["startSecureWipe", "getWipeProgress"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -374,5 +385,23 @@ describe("createPluginApi", () => {
     await api.formatDrive?.("D:");
 
     expect(h.formatDrive).toHaveBeenCalledWith("D:");
+  });
+
+  it("startSecureWipe calls the handler with the drive", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["fs.wipe"]), h);
+
+    await api.startSecureWipe?.("I:");
+
+    expect(h.startSecureWipe).toHaveBeenCalledWith("I:");
+  });
+
+  it("getWipeProgress calls the handler with the wipe id", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["fs.wipe"]), h);
+
+    await api.getWipeProgress?.("C:\\Temp\\krampus-wipe-123.json");
+
+    expect(h.getWipeProgress).toHaveBeenCalledWith("C:\\Temp\\krampus-wipe-123.json");
   });
 });

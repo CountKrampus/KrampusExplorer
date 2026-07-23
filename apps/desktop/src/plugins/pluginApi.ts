@@ -16,6 +16,7 @@ import type {
   ScannedFile,
   SqliteTable,
   TrashedItem,
+  WipeProgress,
 } from "../types/plugin";
 
 export interface PluginApiHandlers {
@@ -69,6 +70,8 @@ export interface PluginApiHandlers {
   getRecoveryProgress: (scanId: string) => Promise<RecoveryProgress>;
   getSystemDrive: () => Promise<string | null>;
   formatDrive: (drive: string) => Promise<"formatted" | "cancelled" | "noFormat">;
+  startSecureWipe: (drive: string) => Promise<string>;
+  getWipeProgress: (wipeId: string) => Promise<WipeProgress>;
 }
 
 /**
@@ -169,6 +172,10 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
   if (has("fs.format")) {
     api.getSystemDrive = () => handlers.getSystemDrive();
     api.formatDrive = (drive) => handlers.formatDrive(drive);
+  }
+  if (has("fs.wipe")) {
+    api.startSecureWipe = (drive) => handlers.startSecureWipe(drive);
+    api.getWipeProgress = (wipeId) => handlers.getWipeProgress(wipeId);
   }
 
   return api;

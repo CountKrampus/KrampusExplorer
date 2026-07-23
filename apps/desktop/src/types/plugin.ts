@@ -119,6 +119,14 @@ export interface RecoveryProgress {
   error: string | null;
 }
 
+export interface WipeProgress {
+  status: "running" | "completed" | "failed";
+  bytesWritten: number;
+  totalBytes: number;
+  /** Present only when `status` is `"failed"`. */
+  error: string | null;
+}
+
 export interface PluginApi {
   /** Present only if the plugin's manifest declares the "ui.sidebar" permission. */
   registerSidebarPanel?: (panel: PluginSidebarPanel) => void;
@@ -278,4 +286,15 @@ export interface PluginApi {
    * normal outcomes -- the user backed out of the native dialog, or Windows itself declined --
    * not errors. */
   formatDrive?: (drive: string) => Promise<"formatted" | "cancelled" | "noFormat">;
+  /** Present only if the plugin's manifest declares the "fs.wipe" permission. Starts a secure
+   * wipe of `drive` (e.g. "I:") -- overwrites the entire volume with zeros. Triggers a Windows
+   * UAC elevation prompt -- the wipe runs in a separate, elevated process. Refuses (rejected
+   * promise) if `drive` is the system drive. Resolves to an opaque wipe id to pass to
+   * `getWipeProgress`; does not wait for the wipe itself to finish. **Irreversible.** */
+  startSecureWipe?: (drive: string) => Promise<string>;
+  /** Present only if the plugin's manifest declares the "fs.wipe" permission. Polls the current
+   * state of a wipe started via `startSecureWipe`. Rejects if called before the elevated process
+   * has written its first progress update -- callers should tolerate a brief initial failure
+   * window rather than treating it as fatal. */
+  getWipeProgress?: (wipeId: string) => Promise<WipeProgress>;
 }
