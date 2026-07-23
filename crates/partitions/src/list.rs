@@ -8,7 +8,12 @@ use std::process::Command;
 /// on the Rust side is a direct deserialization with no intermediate mapping step.
 pub fn list_disks() -> Result<Vec<DiskInfo>, String> {
     let output = Command::new("powershell.exe")
-        .args(["-NoProfile", "-NonInteractive", "-Command", LIST_DISKS_SCRIPT])
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            LIST_DISKS_SCRIPT,
+        ])
         .output()
         .map_err(|e| format!("Could not run PowerShell: {e}"))?;
 
