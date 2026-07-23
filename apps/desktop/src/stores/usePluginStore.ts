@@ -8,10 +8,12 @@ import { useConfirmStore } from "./useConfirmStore";
 import type { DirectoryListing, DriveInfo } from "../types/filesystem";
 import type {
   CommandOutput,
+  DiskInfo,
   FileHash,
   GitCommit,
   GitFileStatus,
   MultiHash,
+  PartitionInfo,
   PluginCommand,
   PluginContextMenuItem,
   PluginFileHandler,
@@ -218,6 +220,23 @@ export const usePluginStore = create<PluginState>((set) => ({
             invoke<"formatted" | "cancelled" | "noFormat">("format_drive", { drive }),
           startSecureWipe: (drive) => invoke<string>("start_secure_wipe", { drive }),
           getWipeProgress: (wipeId) => invoke<WipeProgress>("get_wipe_progress", { wipeId }),
+          listDisks: () => invoke<DiskInfo[]>("list_disks"),
+          createPartition: (diskNumber, offsetBytes, sizeBytes, filesystem, driveLetter) =>
+            invoke<PartitionInfo>("create_partition", {
+              diskNumber,
+              offsetBytes,
+              sizeBytes,
+              filesystem,
+              driveLetter,
+            }),
+          deletePartition: (diskNumber, driveLetter) =>
+            invoke<void>("delete_partition", { diskNumber, driveLetter }),
+          resizePartition: (diskNumber, driveLetter, newSizeBytes) =>
+            invoke<PartitionInfo>("resize_partition", { diskNumber, driveLetter, newSizeBytes }),
+          formatPartition: (diskNumber, driveLetter, filesystem) =>
+            invoke<PartitionInfo>("format_partition", { diskNumber, driveLetter, filesystem }),
+          setDriveLetter: (diskNumber, currentLetter, newLetter) =>
+            invoke<void>("set_drive_letter", { diskNumber, currentLetter, newLetter }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.
