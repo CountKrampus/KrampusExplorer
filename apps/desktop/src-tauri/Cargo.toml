@@ -26,3 +26,4 @@ explorer-plugins = { path = "../../../crates/plugins" }
 explorer-settings = { path = "../../../crates/settings" }
 explorer-terminal = { path = "../../../crates/terminal" }
 explorer-recovery = { path = "../../../crates/recovery" }
+explorer-wipe = { path = "../../../crates/wipe" }

@@ -127,3 +127,15 @@ pub fn run_recovery_scan(
         std::process::exit(1);
     }
 }
+
+/// Entry point for the secure-wipe relaunch (see `explorer_wipe::relaunch_secure_wipe` and
+/// `main.rs`'s `--secure-wipe` flag). Runs the wipe directly and exits -- no Tauri, no window,
+/// no webview. Progress and the final result are communicated back to the original (unelevated)
+/// app process only through the JSON file at `result_file`, which it polls via the
+/// `get_wipe_progress` Tauri command.
+pub fn run_secure_wipe(drive: String, result_file: String) {
+    if let Err(e) = explorer_wipe::run_wipe(&drive, &result_file) {
+        eprintln!("Secure wipe failed: {e}");
+        std::process::exit(1);
+    }
+}

@@ -3,6 +3,11 @@
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
+    if let Some(wipe_args) = parse_secure_wipe_args(&args) {
+        krampus_explorer_lib::run_secure_wipe(wipe_args.drive, wipe_args.result_file);
+        return;
+    }
+
     if let Some(recovery_args) = parse_recovery_scan_args(&args) {
         krampus_explorer_lib::run_recovery_scan(
             recovery_args.drive,
@@ -68,6 +73,27 @@ fn parse_recovery_scan_args(args: &[String]) -> Option<RecoveryScanArgs> {
         file_types: types.split(',').map(String::from).collect(),
         result_file,
     })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SecureWipeArgs {
+    drive: String,
+    result_file: String,
+}
+
+/// Parses `--secure-wipe` and its two required arguments out of the process's command-line
+/// arguments. Returns `None` for a normal app launch, or if `--secure-wipe` is present but
+/// missing either required argument. See `explorer_wipe::relaunch_secure_wipe` for what
+/// constructs this command line.
+fn parse_secure_wipe_args(args: &[String]) -> Option<SecureWipeArgs> {
+    if !args.iter().any(|a| a == "--secure-wipe") {
+        return None;
+    }
+    let drive = args.iter().find_map(|a| a.strip_prefix("--drive=").map(String::from))?;
+    let result_file =
+        args.iter().find_map(|a| a.strip_prefix("--result-file=").map(String::from))?;
+
+    Some(SecureWipeArgs { drive, result_file })
 }
 
 #[cfg(test)]
@@ -137,5 +163,38 @@ mod tests {
             "--drive=D:".to_string(),
         ];
         assert_eq!(parse_recovery_scan_args(&args), None);
+    }
+
+    #[test]
+    fn normal_launch_is_not_secure_wipe() {
+        let args = vec!["krampus-explorer.exe".to_string()];
+        assert_eq!(parse_secure_wipe_args(&args), None);
+    }
+
+    #[test]
+    fn secure_wipe_flag_extracts_both_arguments() {
+        let args = vec![
+            "krampus-explorer.exe".to_string(),
+            "--secure-wipe".to_string(),
+            "--drive=I:".to_string(),
+            "--result-file=C:\\Temp\\wipe-progress.json".to_string(),
+        ];
+        assert_eq!(
+            parse_secure_wipe_args(&args),
+            Some(SecureWipeArgs {
+                drive: "I:".to_string(),
+                result_file: "C:\\Temp\\wipe-progress.json".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn secure_wipe_flag_missing_a_required_argument_yields_none() {
+        let args = vec![
+            "krampus-explorer.exe".to_string(),
+            "--secure-wipe".to_string(),
+            "--drive=I:".to_string(),
+        ];
+        assert_eq!(parse_secure_wipe_args(&args), None);
     }
 }
