@@ -89,9 +89,12 @@ fn parse_secure_wipe_args(args: &[String]) -> Option<SecureWipeArgs> {
     if !args.iter().any(|a| a == "--secure-wipe") {
         return None;
     }
-    let drive = args.iter().find_map(|a| a.strip_prefix("--drive=").map(String::from))?;
-    let result_file =
-        args.iter().find_map(|a| a.strip_prefix("--result-file=").map(String::from))?;
+    let drive = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--drive=").map(String::from))?;
+    let result_file = args
+        .iter()
+        .find_map(|a| a.strip_prefix("--result-file=").map(String::from))?;
 
     Some(SecureWipeArgs { drive, result_file })
 }

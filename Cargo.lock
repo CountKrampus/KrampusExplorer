@@ -1228,6 +1228,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "explorer-wipe"
+version = "0.1.0"
+dependencies = [
+ "explorer-filesystem",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2426,6 +2437,7 @@ dependencies = [
  "explorer-search",
  "explorer-settings",
  "explorer-terminal",
+ "explorer-wipe",
  "serde",
  "serde_json",
  "tauri",

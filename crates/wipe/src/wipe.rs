@@ -50,7 +50,10 @@ pub fn run_wipe(drive: &str, result_file_path: &str) -> Result<(), String> {
 }
 
 fn total_bytes_for_drive(drive: &str) -> Result<u64, String> {
-    let normalized = drive.trim_end_matches('\\').trim_end_matches(':').to_uppercase();
+    let normalized = drive
+        .trim_end_matches('\\')
+        .trim_end_matches(':')
+        .to_uppercase();
     explorer_filesystem::list_drives()
         .into_iter()
         .find(|d| d.name.trim_end_matches(':').to_uppercase() == normalized)
@@ -71,7 +74,10 @@ fn wipe_volume(
         OPEN_EXISTING,
     };
 
-    let letter = drive.trim_end_matches('\\').trim_end_matches(':').to_uppercase();
+    let letter = drive
+        .trim_end_matches('\\')
+        .trim_end_matches(':')
+        .to_uppercase();
     let raw_path = format!(r"\\.\{letter}:");
     let wide: Vec<u16> = raw_path.encode_utf16().chain(std::iter::once(0)).collect();
 

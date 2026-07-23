@@ -9,8 +9,8 @@ mod windows_impl {
     use windows_sys::Win32::UI::Shell::ShellExecuteW;
 
     pub fn relaunch_secure_wipe(drive: &str, result_file: &str) -> Result<(), String> {
-        let exe = std::env::current_exe()
-            .map_err(|e| format!("Could not find own executable: {e}"))?;
+        let exe =
+            std::env::current_exe().map_err(|e| format!("Could not find own executable: {e}"))?;
         let exe_str = exe.to_string_lossy().to_string();
 
         let params = format!(

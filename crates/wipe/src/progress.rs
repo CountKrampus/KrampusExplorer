@@ -19,14 +19,14 @@ pub struct WipeProgress {
 }
 
 pub(crate) fn write_progress(path: &Path, progress: &WipeProgress) -> Result<(), String> {
-    let json =
-        serde_json::to_string(progress).map_err(|e| format!("Could not serialize progress: {e}"))?;
+    let json = serde_json::to_string(progress)
+        .map_err(|e| format!("Could not serialize progress: {e}"))?;
     std::fs::write(path, json).map_err(|e| format!("Could not write progress file: {e}"))
 }
 
 pub fn read_progress(path: &Path) -> Result<WipeProgress, String> {
-    let json = std::fs::read_to_string(path)
-        .map_err(|e| format!("Could not read progress file: {e}"))?;
+    let json =
+        std::fs::read_to_string(path).map_err(|e| format!("Could not read progress file: {e}"))?;
     serde_json::from_str(&json).map_err(|e| format!("Could not parse progress file: {e}"))
 }
 
