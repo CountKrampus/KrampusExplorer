@@ -4,10 +4,14 @@
 //! the target disk holds the Windows/system partition (see `system_disk.rs`).
 
 mod actions;
+mod elevation;
 mod list;
 mod model;
 mod system_disk;
 
+pub use actions::{
+    delete_partition, format_partition, new_partition, resize_partition, set_drive_letter,
+};
 pub use list::list_disks;
 pub use model::{DiskInfo, PartitionInfo};
 pub use system_disk::resolve_system_disk_number;

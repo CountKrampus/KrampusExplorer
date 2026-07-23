@@ -8,7 +8,6 @@
 /// `elevation.rs::run_elevated_action` wraps this fragment in a `try`/`catch` that writes
 /// `$result` to a file it reads back afterward. Actions that don't naturally produce a
 /// `PartitionInfo` (delete, relabel) just set `$result` to `'{}'`.
-#[allow(dead_code, reason = "wired up by a later task (elevation.rs)")]
 fn partition_result_expr(disk_number: u32, locator: &str) -> String {
     format!(
         "$p = Get-Partition -DiskNumber {disk_number} {locator}\n\
@@ -17,7 +16,6 @@ $result = [PSCustomObject]@{{ driveLetter = if ($p.DriveLetter) {{ \"$($p.DriveL
     )
 }
 
-#[allow(dead_code, reason = "wired up by a later task (elevation.rs)")]
 pub(crate) fn new_partition_script(
     disk_number: u32,
     offset_bytes: u64,
@@ -37,7 +35,6 @@ Format-Volume -Partition $p -FileSystem {filesystem} -Confirm:$false | Out-Null\
     )
 }
 
-#[allow(dead_code, reason = "wired up by a later task (elevation.rs)")]
 pub(crate) fn delete_partition_script(disk_number: u32, drive_letter: &str) -> String {
     let letter = drive_letter.trim_end_matches(':').to_uppercase();
     format!(
@@ -46,7 +43,6 @@ $result = '{{}}'"
     )
 }
 
-#[allow(dead_code, reason = "wired up by a later task (elevation.rs)")]
 pub(crate) fn resize_partition_script(
     disk_number: u32,
     drive_letter: &str,
@@ -60,7 +56,6 @@ pub(crate) fn resize_partition_script(
     )
 }
 
-#[allow(dead_code, reason = "wired up by a later task (elevation.rs)")]
 pub(crate) fn format_partition_script(
     disk_number: u32,
     drive_letter: &str,
@@ -74,7 +69,6 @@ pub(crate) fn format_partition_script(
     )
 }
 
-#[allow(dead_code, reason = "wired up by a later task (elevation.rs)")]
 pub(crate) fn set_drive_letter_script(
     disk_number: u32,
     drive_letter: &str,
@@ -93,6 +87,93 @@ pub(crate) fn set_drive_letter_script(
     format!("{action}\n$result = '{{}}'")
 }
 
+use crate::elevation::run_elevated_action;
+use crate::model::PartitionInfo;
+use crate::system_disk::resolve_system_disk_number;
+
+/// Refuses (`Err`) if `disk_number` is the physical disk holding the system/boot partition, or
+/// if that can't currently be determined. Re-checked fresh on every call rather than trusting a
+/// client-supplied `isSystem` flag from a possibly-stale `list_disks()` snapshot -- the backend
+/// never relies on the frontend alone to have kept a destructive action off the system disk.
+fn ensure_not_system_disk(disk_number: u32) -> Result<(), String> {
+    match resolve_system_disk_number()? {
+        Some(system_number) if system_number == disk_number => Err(format!(
+            "Refusing to modify disk {disk_number} -- it holds the system drive"
+        )),
+        _ => Ok(()),
+    }
+}
+
+fn parse_partition_result(json: &str) -> Result<PartitionInfo, String> {
+    serde_json::from_str(json).map_err(|e| format!("Could not parse the operation's result: {e}"))
+}
+
+pub fn new_partition(
+    disk_number: u32,
+    offset_bytes: u64,
+    size_bytes: u64,
+    filesystem: &str,
+    drive_letter: Option<&str>,
+) -> Result<PartitionInfo, String> {
+    ensure_not_system_disk(disk_number)?;
+    let json = run_elevated_action(&new_partition_script(
+        disk_number,
+        offset_bytes,
+        size_bytes,
+        filesystem,
+        drive_letter,
+    ))?;
+    parse_partition_result(&json)
+}
+
+pub fn delete_partition(disk_number: u32, drive_letter: &str) -> Result<(), String> {
+    ensure_not_system_disk(disk_number)?;
+    run_elevated_action(&delete_partition_script(disk_number, drive_letter))?;
+    Ok(())
+}
+
+pub fn resize_partition(
+    disk_number: u32,
+    drive_letter: &str,
+    new_size_bytes: u64,
+) -> Result<PartitionInfo, String> {
+    ensure_not_system_disk(disk_number)?;
+    let json = run_elevated_action(&resize_partition_script(
+        disk_number,
+        drive_letter,
+        new_size_bytes,
+    ))?;
+    parse_partition_result(&json)
+}
+
+pub fn format_partition(
+    disk_number: u32,
+    drive_letter: &str,
+    filesystem: &str,
+) -> Result<PartitionInfo, String> {
+    ensure_not_system_disk(disk_number)?;
+    let json = run_elevated_action(&format_partition_script(
+        disk_number,
+        drive_letter,
+        filesystem,
+    ))?;
+    parse_partition_result(&json)
+}
+
+pub fn set_drive_letter(
+    disk_number: u32,
+    drive_letter: &str,
+    new_letter: Option<&str>,
+) -> Result<(), String> {
+    ensure_not_system_disk(disk_number)?;
+    run_elevated_action(&set_drive_letter_script(
+        disk_number,
+        drive_letter,
+        new_letter,
+    ))?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,7 +181,9 @@ mod tests {
     #[test]
     fn new_partition_script_with_an_explicit_drive_letter() {
         let script = new_partition_script(1, 1_048_576, 500_000_000_000, "NTFS", Some("E:"));
-        assert!(script.contains("New-Partition -DiskNumber 1 -Offset 1048576 -Size 500000000000 -DriveLetter 'E'"));
+        assert!(script.contains(
+            "New-Partition -DiskNumber 1 -Offset 1048576 -Size 500000000000 -DriveLetter 'E'"
+        ));
         assert!(script.contains("Format-Volume -Partition $p -FileSystem NTFS -Confirm:$false"));
     }
 
@@ -125,7 +208,9 @@ mod tests {
     #[test]
     fn resize_partition_script_sets_the_new_size() {
         let script = resize_partition_script(0, "C:", 600_000_000_000);
-        assert!(script.contains("Resize-Partition -DiskNumber 0 -DriveLetter 'C' -Size 600000000000"));
+        assert!(
+            script.contains("Resize-Partition -DiskNumber 0 -DriveLetter 'C' -Size 600000000000")
+        );
     }
 
     #[test]
@@ -143,7 +228,9 @@ mod tests {
     #[test]
     fn set_drive_letter_script_removes_the_letter_when_none_is_given() {
         let script = set_drive_letter_script(1, "E:", None);
-        assert!(script.contains("Remove-PartitionAccessPath -DiskNumber 1 -DriveLetter 'E' -AccessPath 'E:\\'"));
+        assert!(script.contains(
+            "Remove-PartitionAccessPath -DiskNumber 1 -DriveLetter 'E' -AccessPath 'E:\\'"
+        ));
     }
 
     #[test]
