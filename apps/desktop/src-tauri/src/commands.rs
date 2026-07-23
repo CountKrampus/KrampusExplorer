@@ -11,6 +11,7 @@ use explorer_recovery::{read_progress, relaunch_recovery_scan, RecoveryProgress}
 use explorer_search::{HistoryEntry, SavedSearch, SearchFilters, SearchResult};
 use explorer_settings::Settings;
 use explorer_terminal::TerminalManager;
+use explorer_wipe::{read_progress as read_wipe_progress, relaunch_secure_wipe, WipeProgress};
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::Manager;
@@ -129,6 +130,25 @@ pub async fn format_drive(
     tauri::async_runtime::spawn_blocking(move || explorer_filesystem::format_drive(&drive, hwnd))
         .await
         .map_err(|e| format!("Format task panicked: {e}"))?
+}
+
+#[tauri::command]
+pub fn start_secure_wipe(drive: String) -> Result<String, String> {
+    let wipe_id = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos().to_string())
+        .unwrap_or_else(|_| "0".to_string());
+    let result_file = std::env::temp_dir()
+        .join(format!("krampus-wipe-{wipe_id}.json"))
+        .to_string_lossy()
+        .to_string();
+    relaunch_secure_wipe(&drive, &result_file)?;
+    Ok(result_file)
+}
+
+#[tauri::command]
+pub fn get_wipe_progress(wipe_id: String) -> Result<WipeProgress, String> {
+    read_wipe_progress(std::path::Path::new(&wipe_id))
 }
 
 #[tauri::command]
