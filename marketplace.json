@@ -68,5 +68,10 @@
     "id": "secure-wipe",
     "name": "Secure Wipe",
     "description": "Securely erases a drive with a zero-fill pass. Permanently destroys data."
+  },
+  {
+    "id": "disk-partition-manager",
+    "name": "Disk Partition Manager",
+    "description": "Visual disk map: create, delete, resize, format, and relabel partitions. Permanently erases data on affected partitions."
   }
 ]

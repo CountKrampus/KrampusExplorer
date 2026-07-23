@@ -33,6 +33,8 @@ fuller examples covering most of the permissions below:
 - `examples/plugins/recover-lost-data/` — signature-based file recovery via `system.drives`/`fs.recover`
 - `examples/plugins/drive-format/` — hands off to Windows' native Format dialog via `fs.format`
 - `examples/plugins/secure-wipe/` — single-pass zero-fill secure erase via `fs.wipe`
+- `examples/plugins/disk-partition-manager/` — visual disk/partition map with create/delete/
+  resize/format/relabel via `system.partitions`
 
 ## manifest.json
 
@@ -94,6 +96,7 @@ call, because ungranted methods simply don't exist on the object.
 | `fs.recover` | `api.startRecoveryScan(drive, destination, fileTypes)`, `api.getRecoveryProgress(scanId)` |
 | `fs.format` | `api.getSystemDrive()`, `api.formatDrive(drive)` |
 | `fs.wipe` | `api.startSecureWipe(drive)`, `api.getWipeProgress(wipeId)` |
+| `system.partitions` | `api.listDisks()`, `api.createPartition(diskNumber, offsetBytes, sizeBytes, filesystem, driveLetter?)`, `api.deletePartition(diskNumber, driveLetter)`, `api.resizePartition(diskNumber, driveLetter, newSizeBytes)`, `api.formatPartition(diskNumber, driveLetter, filesystem)`, `api.setDriveLetter(diskNumber, currentLetter, newLetter?)` |
 
 ### `registerSidebarPanel`
 
@@ -372,6 +375,35 @@ On SSDs, wear-leveling means an application-level overwrite like this cannot gua
 is truly unrecoverable -- true secure erase for SSDs requires the drive's own firmware-level ATA
 Secure Erase command, which this does not implement. After wiping, the drive is left
 raw/unformatted; use `fs.format`'s `formatDrive` afterward if you want to reuse it.
+
+### `system.partitions` methods
+
+- `listDisks(): Promise<DiskInfo[]>` — every physical disk and its partitions. `DiskInfo` has
+  `number`, `totalBytes`, `isSystem`, `model`, and `partitions: PartitionInfo[]`. `PartitionInfo`
+  has `driveLetter` (nullable), `sizeBytes`, `offsetBytes`, `filesystem` (nullable), and
+  `partitionType`. Unallocated space isn't returned explicitly -- compute gaps between partition
+  offsets client-side, as the reference plugin does. Read-only; does not require elevation.
+- `createPartition(diskNumber, offsetBytes, sizeBytes, filesystem, driveLetter?):
+  Promise<PartitionInfo>` — creates and formats a new partition in existing unallocated space.
+  Triggers a UAC prompt. Refuses (rejected promise) if `diskNumber` is the system disk.
+- `deletePartition(diskNumber, driveLetter): Promise<void>` — **permanently destroys all data on
+  the partition.** Triggers a UAC prompt. Refuses if `diskNumber` is the system disk.
+- `resizePartition(diskNumber, driveLetter, newSizeBytes): Promise<PartitionInfo>` — shrinks or
+  extends into adjacent unallocated space only. Triggers a UAC prompt. Refuses if `diskNumber` is
+  the system disk. **Shrinking below the partition's used space can destroy data.**
+- `formatPartition(diskNumber, driveLetter, filesystem): Promise<PartitionInfo>` — reformats in
+  place. Triggers a UAC prompt. Refuses if `diskNumber` is the system disk. **Permanently destroys
+  all data on the partition.**
+- `setDriveLetter(diskNumber, currentLetter, newLetter?): Promise<void>` — reassigns or removes a
+  partition's drive letter. Triggers a UAC prompt. Refuses if `diskNumber` is the system disk.
+  Does not touch data.
+
+Every mutating method elevates `powershell.exe` per-call (a separate UAC prompt each time) rather
+than sharing one elevated session, and every one of them independently re-checks `diskNumber`
+against the current system disk on the backend -- never trust a cached `isSystem` flag from an
+earlier `listDisks()` call as the reason a destructive action is safe to offer. See
+`examples/plugins/disk-partition-manager/` for the reference implementation, including the typed-
+confirmation flow used before calling `deletePartition`/`resizePartition`/`formatPartition`.
 
 ## Plugin marketplace
 
