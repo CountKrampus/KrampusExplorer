@@ -22,6 +22,7 @@ import type {
   ScannedFile,
   SqliteTable,
   TrashedItem,
+  WipeProgress,
 } from "../types/plugin";
 
 export interface RegisteredSidebarPanel extends PluginSidebarPanel {
@@ -215,6 +216,8 @@ export const usePluginStore = create<PluginState>((set) => ({
           getSystemDrive: () => invoke<string | null>("get_system_drive"),
           formatDrive: (drive) =>
             invoke<"formatted" | "cancelled" | "noFormat">("format_drive", { drive }),
+          startSecureWipe: (drive) => invoke<string>("start_secure_wipe", { drive }),
+          getWipeProgress: (wipeId) => invoke<WipeProgress>("get_wipe_progress", { wipeId }),
         });
         // Plugin code runs via `new Function`, not a sandboxed ES module — it executes with
         // access to the global scope (window, document, fetch, ...), not just what's in `api`.
