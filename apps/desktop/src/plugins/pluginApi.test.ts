@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { createPluginApi, type PluginApiHandlers } from "./pluginApi";
-import type { PluginManifest, RecoveryProgress, WipeProgress } from "../types/plugin";
+import type {
+  DiskInfo,
+  PartitionInfo,
+  PluginManifest,
+  RecoveryProgress,
+  WipeProgress,
+} from "../types/plugin";
 
 function manifest(permissions: string[]): PluginManifest {
   return {
@@ -70,6 +76,30 @@ function handlers(): PluginApiHandlers {
       totalBytes: 100,
       error: null,
     } satisfies WipeProgress),
+    listDisks: vi.fn().mockResolvedValue([] as DiskInfo[]),
+    createPartition: vi.fn().mockResolvedValue({
+      driveLetter: "E:",
+      sizeBytes: 500_000_000_000,
+      offsetBytes: 1_048_576,
+      filesystem: "NTFS",
+      partitionType: "Basic",
+    } satisfies PartitionInfo),
+    deletePartition: vi.fn().mockResolvedValue(undefined),
+    resizePartition: vi.fn().mockResolvedValue({
+      driveLetter: "E:",
+      sizeBytes: 600_000_000_000,
+      offsetBytes: 1_048_576,
+      filesystem: "NTFS",
+      partitionType: "Basic",
+    } satisfies PartitionInfo),
+    formatPartition: vi.fn().mockResolvedValue({
+      driveLetter: "E:",
+      sizeBytes: 500_000_000_000,
+      offsetBytes: 1_048_576,
+      filesystem: "exFAT",
+      partitionType: "Basic",
+    } satisfies PartitionInfo),
+    setDriveLetter: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -99,6 +129,7 @@ describe("createPluginApi", () => {
     "fs.recover",
     "fs.format",
     "fs.wipe",
+    "system.partitions",
   ];
   const ALL_METHODS = [
     "registerSidebarPanel",
@@ -143,6 +174,12 @@ describe("createPluginApi", () => {
     "formatDrive",
     "startSecureWipe",
     "getWipeProgress",
+    "listDisks",
+    "createPartition",
+    "deletePartition",
+    "resizePartition",
+    "formatPartition",
+    "setDriveLetter",
   ] as const;
 
   it("grants every method when every permission is declared", () => {
@@ -185,6 +222,7 @@ describe("createPluginApi", () => {
     ["fs.recover", ["startRecoveryScan", "getRecoveryProgress"]],
     ["fs.format", ["getSystemDrive", "formatDrive"]],
     ["fs.wipe", ["startSecureWipe", "getWipeProgress"]],
+    ["system.partitions", ["listDisks", "createPartition", "deletePartition", "resizePartition", "formatPartition", "setDriveLetter"]],
   ] as const)("granting only %s exposes only %s", (permission, methods) => {
     const api = createPluginApi(manifest([permission]), handlers());
 
@@ -403,5 +441,59 @@ describe("createPluginApi", () => {
     await api.getWipeProgress?.("C:\\Temp\\krampus-wipe-123.json");
 
     expect(h.getWipeProgress).toHaveBeenCalledWith("C:\\Temp\\krampus-wipe-123.json");
+  });
+
+  it("listDisks calls the handler with no arguments", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["system.partitions"]), h);
+
+    await api.listDisks?.();
+
+    expect(h.listDisks).toHaveBeenCalledWith();
+  });
+
+  it("createPartition forwards all arguments to the handler", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["system.partitions"]), h);
+
+    await api.createPartition?.(1, 1_048_576, 500_000_000_000, "NTFS", "E:");
+
+    expect(h.createPartition).toHaveBeenCalledWith(1, 1_048_576, 500_000_000_000, "NTFS", "E:");
+  });
+
+  it("deletePartition calls the handler with the disk number and drive letter", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["system.partitions"]), h);
+
+    await api.deletePartition?.(1, "E:");
+
+    expect(h.deletePartition).toHaveBeenCalledWith(1, "E:");
+  });
+
+  it("resizePartition forwards all arguments to the handler", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["system.partitions"]), h);
+
+    await api.resizePartition?.(1, "E:", 600_000_000_000);
+
+    expect(h.resizePartition).toHaveBeenCalledWith(1, "E:", 600_000_000_000);
+  });
+
+  it("formatPartition forwards all arguments to the handler", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["system.partitions"]), h);
+
+    await api.formatPartition?.(1, "E:", "exFAT");
+
+    expect(h.formatPartition).toHaveBeenCalledWith(1, "E:", "exFAT");
+  });
+
+  it("setDriveLetter forwards all arguments to the handler", async () => {
+    const h = handlers();
+    const api = createPluginApi(manifest(["system.partitions"]), h);
+
+    await api.setDriveLetter?.(1, "E:", "G:");
+
+    expect(h.setDriveLetter).toHaveBeenCalledWith(1, "E:", "G:");
   });
 });

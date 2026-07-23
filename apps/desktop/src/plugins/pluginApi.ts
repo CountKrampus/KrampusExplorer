@@ -1,10 +1,12 @@
 import type { DriveInfo, EntryInfo } from "../types/filesystem";
 import type {
   CommandOutput,
+  DiskInfo,
   FileHash,
   GitCommit,
   GitFileStatus,
   MultiHash,
+  PartitionInfo,
   PluginApi,
   PluginCommand,
   PluginContextMenuItem,
@@ -72,6 +74,26 @@ export interface PluginApiHandlers {
   formatDrive: (drive: string) => Promise<"formatted" | "cancelled" | "noFormat">;
   startSecureWipe: (drive: string) => Promise<string>;
   getWipeProgress: (wipeId: string) => Promise<WipeProgress>;
+  listDisks: () => Promise<DiskInfo[]>;
+  createPartition: (
+    diskNumber: number,
+    offsetBytes: number,
+    sizeBytes: number,
+    filesystem: string,
+    driveLetter?: string,
+  ) => Promise<PartitionInfo>;
+  deletePartition: (diskNumber: number, driveLetter: string) => Promise<void>;
+  resizePartition: (
+    diskNumber: number,
+    driveLetter: string,
+    newSizeBytes: number,
+  ) => Promise<PartitionInfo>;
+  formatPartition: (
+    diskNumber: number,
+    driveLetter: string,
+    filesystem: string,
+  ) => Promise<PartitionInfo>;
+  setDriveLetter: (diskNumber: number, currentLetter: string, newLetter?: string) => Promise<void>;
 }
 
 /**
@@ -176,6 +198,19 @@ export function createPluginApi(manifest: PluginManifest, handlers: PluginApiHan
   if (has("fs.wipe")) {
     api.startSecureWipe = (drive) => handlers.startSecureWipe(drive);
     api.getWipeProgress = (wipeId) => handlers.getWipeProgress(wipeId);
+  }
+  if (has("system.partitions")) {
+    api.listDisks = () => handlers.listDisks();
+    api.createPartition = (diskNumber, offsetBytes, sizeBytes, filesystem, driveLetter) =>
+      handlers.createPartition(diskNumber, offsetBytes, sizeBytes, filesystem, driveLetter);
+    api.deletePartition = (diskNumber, driveLetter) =>
+      handlers.deletePartition(diskNumber, driveLetter);
+    api.resizePartition = (diskNumber, driveLetter, newSizeBytes) =>
+      handlers.resizePartition(diskNumber, driveLetter, newSizeBytes);
+    api.formatPartition = (diskNumber, driveLetter, filesystem) =>
+      handlers.formatPartition(diskNumber, driveLetter, filesystem);
+    api.setDriveLetter = (diskNumber, currentLetter, newLetter) =>
+      handlers.setDriveLetter(diskNumber, currentLetter, newLetter);
   }
 
   return api;

@@ -127,6 +127,22 @@ export interface WipeProgress {
   error: string | null;
 }
 
+export interface PartitionInfo {
+  driveLetter: string | null;
+  sizeBytes: number;
+  offsetBytes: number;
+  filesystem: string | null;
+  partitionType: string;
+}
+
+export interface DiskInfo {
+  number: number;
+  totalBytes: number;
+  isSystem: boolean;
+  model: string;
+  partitions: PartitionInfo[];
+}
+
 export interface PluginApi {
   /** Present only if the plugin's manifest declares the "ui.sidebar" permission. */
   registerSidebarPanel?: (panel: PluginSidebarPanel) => void;
@@ -297,4 +313,56 @@ export interface PluginApi {
    * has written its first progress update -- callers should tolerate a brief initial failure
    * window rather than treating it as fatal. */
   getWipeProgress?: (wipeId: string) => Promise<WipeProgress>;
+  /** Present only if the plugin's manifest declares the "system.partitions" permission. Lists
+   * every physical disk and its partitions, including unallocated space (inferred client-side
+   * from gaps between partition offsets -- not returned explicitly). Read-only; does not require
+   * elevation. */
+  listDisks?: () => Promise<DiskInfo[]>;
+  /** Present only if the plugin's manifest declares the "system.partitions" permission. Creates
+   * a new partition in existing unallocated space on `diskNumber`, formats it with `filesystem`
+   * ("NTFS" | "FAT32" | "exFAT"), and optionally assigns `driveLetter` (auto-assigned if
+   * omitted). Triggers a Windows UAC elevation prompt. Refuses (rejected promise) if `diskNumber`
+   * is the system disk. */
+  createPartition?: (
+    diskNumber: number,
+    offsetBytes: number,
+    sizeBytes: number,
+    filesystem: string,
+    driveLetter?: string,
+  ) => Promise<PartitionInfo>;
+  /** Present only if the plugin's manifest declares the "system.partitions" permission. Deletes
+   * the partition at `driveLetter` on `diskNumber`, returning its space to unallocated. Triggers
+   * a Windows UAC elevation prompt. Refuses (rejected promise) if `diskNumber` is the system
+   * disk. **Permanently destroys all data on the partition.** */
+  deletePartition?: (diskNumber: number, driveLetter: string) => Promise<void>;
+  /** Present only if the plugin's manifest declares the "system.partitions" permission. Resizes
+   * the partition at `driveLetter` on `diskNumber` to `newSizeBytes` -- shrinking or extending
+   * into adjacent unallocated space only (whatever Windows itself reports as the valid range).
+   * Triggers a Windows UAC elevation prompt. Refuses (rejected promise) if `diskNumber` is the
+   * system disk. **Shrinking can destroy data if the requested size is smaller than the data
+   * already on the partition.** */
+  resizePartition?: (
+    diskNumber: number,
+    driveLetter: string,
+    newSizeBytes: number,
+  ) => Promise<PartitionInfo>;
+  /** Present only if the plugin's manifest declares the "system.partitions" permission.
+   * Reformats the partition at `driveLetter` in place with `filesystem`. Triggers a Windows UAC
+   * elevation prompt. Refuses (rejected promise) if `diskNumber` is the system disk.
+   * **Permanently destroys all data on the partition.** */
+  formatPartition?: (
+    diskNumber: number,
+    driveLetter: string,
+    filesystem: string,
+  ) => Promise<PartitionInfo>;
+  /** Present only if the plugin's manifest declares the "system.partitions" permission.
+   * Reassigns the drive letter of the partition currently at `currentLetter` on `diskNumber` to
+   * `newLetter`, or removes its letter entirely if `newLetter` is omitted. Triggers a Windows UAC
+   * elevation prompt. Refuses (rejected promise) if `diskNumber` is the system disk. Does not
+   * touch the partition's data. */
+  setDriveLetter?: (
+    diskNumber: number,
+    currentLetter: string,
+    newLetter?: string,
+  ) => Promise<void>;
 }
