@@ -1,0 +1,8 @@
+{
+  "id": "disk-partition-manager",
+  "name": "Disk Partition Manager",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "ui.confirm", "system.partitions"],
+  "entry": "frontend/index.js"
+}
