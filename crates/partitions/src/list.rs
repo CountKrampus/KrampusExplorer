@@ -1,8 +1,62 @@
 use crate::model::DiskInfo;
+use std::process::Command;
+
+/// Lists every physical disk and its partitions. Runs **unelevated** -- `Get-Disk`/
+/// `Get-Partition`/`Get-Volume` are read-only queries that don't need Administrator, unlike every
+/// mutating operation that will be added in a later task. The script builds its own
+/// `[PSCustomObject]`s with field names matching `DiskInfo`/`PartitionInfo` exactly, so parsing
+/// on the Rust side is a direct deserialization with no intermediate mapping step.
+pub fn list_disks() -> Result<Vec<DiskInfo>, String> {
+    let output = Command::new("powershell.exe")
+        .args(["-NoProfile", "-NonInteractive", "-Command", LIST_DISKS_SCRIPT])
+        .output()
+        .map_err(|e| format!("Could not run PowerShell: {e}"))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "Could not list disks: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+
+    parse_disks_json(&String::from_utf8_lossy(&output.stdout))
+}
+
+/// Wraps both the top-level disk collection and each disk's `partitions` collection in `@(...)`
+/// so `ConvertTo-Json` always emits an array, even when there's exactly one disk or exactly one
+/// partition -- without this, PowerShell collapses a single-element array to a bare JSON object,
+/// which would fail to deserialize as `Vec<DiskInfo>`/`Vec<PartitionInfo>`.
+const LIST_DISKS_SCRIPT: &str = r#"
+$ErrorActionPreference = 'Stop'
+$systemLetter = $env:SystemDrive.TrimEnd(':')
+$systemDiskNumber = (Get-Partition -DriveLetter $systemLetter -ErrorAction SilentlyContinue).DiskNumber
+
+$disks = Get-Disk | ForEach-Object {
+    $disk = $_
+    $partitions = @(Get-Partition -DiskNumber $disk.Number -ErrorAction SilentlyContinue | ForEach-Object {
+        $part = $_
+        $volume = if ($part.DriveLetter) { Get-Volume -DriveLetter $part.DriveLetter -ErrorAction SilentlyContinue } else { $null }
+        [PSCustomObject]@{
+            driveLetter   = if ($part.DriveLetter) { "$($part.DriveLetter):" } else { $null }
+            sizeBytes     = $part.Size
+            offsetBytes   = $part.Offset
+            filesystem    = if ($volume) { $volume.FileSystem } else { $null }
+            partitionType = $part.Type.ToString()
+        }
+    })
+    [PSCustomObject]@{
+        number     = $disk.Number
+        totalBytes = $disk.Size
+        isSystem   = ($null -ne $systemDiskNumber -and $disk.Number -eq $systemDiskNumber)
+        model      = $disk.FriendlyName
+        partitions = $partitions
+    }
+}
+@($disks) | ConvertTo-Json -Depth 6
+"#;
 
 /// Parses PowerShell-emitted JSON (an array of disk objects, shaped exactly like
 /// `Vec<DiskInfo>`) into disk info. Used by the real `list_disks()` added in a later task.
-#[allow(dead_code)] // wired up by list_disks() in a later task
 pub(crate) fn parse_disks_json(json: &str) -> Result<Vec<DiskInfo>, String> {
     let trimmed = json.trim();
     if trimmed.is_empty() {
