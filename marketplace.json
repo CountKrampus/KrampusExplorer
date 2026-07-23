@@ -63,5 +63,10 @@
     "id": "drive-format",
     "name": "Drive Format",
     "description": "Format a drive via Windows' own native Format dialog. Permanently erases data."
+  },
+  {
+    "id": "secure-wipe",
+    "name": "Secure Wipe",
+    "description": "Securely erases a drive with a zero-fill pass. Permanently destroys data."
   }
 ]

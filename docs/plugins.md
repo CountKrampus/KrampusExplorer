@@ -32,6 +32,7 @@ fuller examples covering most of the permissions below:
 - `examples/plugins/clear-unnecessary-files/` — clears known junk locations via `system.paths`/`fs.trash`
 - `examples/plugins/recover-lost-data/` — signature-based file recovery via `system.drives`/`fs.recover`
 - `examples/plugins/drive-format/` — hands off to Windows' native Format dialog via `fs.format`
+- `examples/plugins/secure-wipe/` — single-pass zero-fill secure erase via `fs.wipe`
 
 ## manifest.json
 
@@ -92,6 +93,7 @@ call, because ungranted methods simply don't exist on the object.
 | `system.drives` | `api.listDrives()` |
 | `fs.recover` | `api.startRecoveryScan(drive, destination, fileTypes)`, `api.getRecoveryProgress(scanId)` |
 | `fs.format` | `api.getSystemDrive()`, `api.formatDrive(drive)` |
+| `fs.wipe` | `api.startSecureWipe(drive)`, `api.getWipeProgress(wipeId)` |
 
 ### `registerSidebarPanel`
 
@@ -349,6 +351,27 @@ This plugin does not implement formatting itself; it hands off entirely to Windo
 Format dialog, which handles filesystem type, allocation unit, volume label, and
 quick-vs-full-format choice. See `examples/plugins/drive-format/` for the reference
 implementation, including the confirmation flow expected before calling `formatDrive`.
+
+### `fs.wipe` methods
+
+- `startSecureWipe(drive: string): Promise<string>` — starts a secure wipe of `drive` (e.g.
+  `"I:"`), overwriting the entire volume with a single zero-fill pass. **Permanently and
+  irreversibly destroys all data on the drive.** Triggers a Windows UAC elevation prompt -- the
+  wipe itself runs in a separate, elevated process, since raw volume writes require
+  Administrator rights. Refuses (rejected promise) if `drive` is the system drive. Resolves to
+  an opaque wipe id (pass it to `getWipeProgress` verbatim) once the elevated process has been
+  launched -- it does not wait for the wipe to finish.
+- `getWipeProgress(wipeId: string): Promise<WipeProgress>` — polls the current state of a wipe
+  started via `startSecureWipe`. `WipeProgress` has `status` (`"running"` | `"completed"` |
+  `"failed"`), `bytesWritten`, `totalBytes`, and `error` (only set when `status` is `"failed"`).
+  Rejects if called before the elevated process has written its first progress update -- a brief
+  window right after starting, not a real error; callers should tolerate it rather than treating
+  it as fatal.
+
+On SSDs, wear-leveling means an application-level overwrite like this cannot guarantee old data
+is truly unrecoverable -- true secure erase for SSDs requires the drive's own firmware-level ATA
+Secure Erase command, which this does not implement. After wiping, the drive is left
+raw/unformatted; use `fs.format`'s `formatDrive` afterward if you want to reuse it.
 
 ## Plugin marketplace
 
