@@ -1161,6 +1161,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "explorer-partitions"
+version = "0.1.0"
+dependencies = [
+ "explorer-filesystem",
+ "serde",
+ "serde_json",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "explorer-plugins"
 version = "0.1.0"
 dependencies = [
@@ -2431,6 +2441,7 @@ version = "0.1.0"
 dependencies = [
  "explorer-core",
  "explorer-filesystem",
+ "explorer-partitions",
  "explorer-plugins",
  "explorer-preview",
  "explorer-recovery",
