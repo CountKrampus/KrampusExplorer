@@ -5,6 +5,8 @@
 
 mod list;
 mod model;
+mod system_disk;
 
 pub use list::list_disks;
 pub use model::{DiskInfo, PartitionInfo};
+pub use system_disk::resolve_system_disk_number;
