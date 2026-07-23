@@ -1,0 +1,8 @@
+{
+  "id": "secure-wipe",
+  "name": "Secure Wipe",
+  "version": "1.0.0",
+  "author": "Krampus Explorer",
+  "permissions": ["ui.sidebar", "system.drives", "fs.format", "fs.wipe"],
+  "entry": "frontend/index.js"
+}
