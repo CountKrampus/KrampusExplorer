@@ -23,6 +23,18 @@ interface FetchedManifest {
   entry?: string;
 }
 
+/** Converts a binary `ArrayBuffer` (e.g. a fetched `icon.png`) to a base64 string for the
+ * `install_plugin` command, which decodes it back to raw bytes on the Rust side -- `content` on
+ * `PluginFile` is a JSON string, so binary data can't cross that boundary any other way. */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
 /** installedIds comes from the plugins directory scan (usePluginStore.manifests), not the
  * marketplace itself — a plugin is "installed" when its id shows up there. */
 export function isInstalled(entryId: string, installedIds: string[]): boolean {
@@ -85,13 +97,22 @@ function PluginMarketplace() {
       }
       const entryText = await entryResponse.text();
 
-      await invoke("install_plugin", {
-        pluginId: entry.id,
-        files: [
-          { relativePath: "manifest.json", content: manifestText },
-          { relativePath: manifest.entry, content: entryText },
-        ],
-      });
+      const files = [
+        { relativePath: "manifest.json", content: manifestText, isBase64: false },
+        { relativePath: manifest.entry, content: entryText, isBase64: false },
+      ];
+
+      // icon.png is optional -- most plugins have one, but not all. A 404 here just means this
+      // plugin has no icon; the app already falls back to a letter-avatar placeholder for that
+      // case, so it's not an install failure.
+      const iconResponse = await fetch(`${base}/icon.png`);
+      if (iconResponse.ok) {
+        const iconBuffer = await iconResponse.arrayBuffer();
+        const iconBase64 = arrayBufferToBase64(iconBuffer);
+        files.push({ relativePath: "icon.png", content: iconBase64, isBase64: true });
+      }
+
+      await invoke("install_plugin", { pluginId: entry.id, files });
 
       // Re-scans the plugins directory and re-runs every enabled plugin's entry script fresh —
       // the newly-installed plugin shows up with no app restart needed, same as toggling a

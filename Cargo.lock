@@ -1174,6 +1174,7 @@ dependencies = [
 name = "explorer-plugins"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "blake3",
  "dirs 5.0.1",
  "futures-util",

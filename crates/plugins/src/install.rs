@@ -1,3 +1,4 @@
+use base64::Engine;
 use serde::Deserialize;
 use std::path::Path;
 
@@ -9,6 +10,13 @@ pub struct PluginFile {
     /// Relative to the plugin's own directory, e.g. `"manifest.json"` or `"frontend/index.js"`.
     pub relative_path: String,
     pub content: String,
+    /// If true, `content` is base64-encoded and is decoded to raw bytes before writing --
+    /// necessary for binary files like `icon.png` (marketplace installs fetch these as an
+    /// `ArrayBuffer` and base64-encode them client-side, since plain text can't round-trip
+    /// arbitrary binary data). Defaults to false so existing callers writing plain text (JS/JSON)
+    /// don't need to change.
+    #[serde(default)]
+    pub is_base64: bool,
 }
 
 /// Writes `files` into a new (or overwritten) subdirectory of the plugins directory named
@@ -50,8 +58,21 @@ pub fn install_plugin(
             std::fs::create_dir_all(parent)
                 .map_err(|e| format!("Could not create '{}': {e}", parent.display()))?;
         }
-        std::fs::write(&dest, &file.content)
-            .map_err(|e| format!("Could not write '{}': {e}", dest.display()))?;
+        if file.is_base64 {
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(&file.content)
+                .map_err(|e| {
+                    format!(
+                        "Could not decode base64 content for '{}': {e}",
+                        dest.display()
+                    )
+                })?;
+            std::fs::write(&dest, bytes)
+                .map_err(|e| format!("Could not write '{}': {e}", dest.display()))?;
+        } else {
+            std::fs::write(&dest, &file.content)
+                .map_err(|e| format!("Could not write '{}': {e}", dest.display()))?;
+        }
     }
     Ok(())
 }
@@ -68,10 +89,12 @@ mod tests {
             PluginFile {
                 relative_path: "manifest.json".to_string(),
                 content: "{}".to_string(),
+                is_base64: false,
             },
             PluginFile {
                 relative_path: "frontend/index.js".to_string(),
                 content: "// hi".to_string(),
+                is_base64: false,
             },
         ];
 
@@ -94,6 +117,7 @@ mod tests {
         let files = vec![PluginFile {
             relative_path: "manifest.json".to_string(),
             content: "{}".to_string(),
+            is_base64: false,
         }];
 
         let result = install_plugin("../escape", &files, Some(dir.path()));
@@ -107,6 +131,7 @@ mod tests {
         let files = vec![PluginFile {
             relative_path: "../../evil.txt".to_string(),
             content: "pwned".to_string(),
+            is_base64: false,
         }];
 
         let result = install_plugin("my-plugin", &files, Some(dir.path()));
@@ -125,6 +150,7 @@ mod tests {
         let files = vec![PluginFile {
             relative_path: "C:\\Windows\\evil.txt".to_string(),
             content: "pwned".to_string(),
+            is_base64: false,
         }];
 
         let result = install_plugin("my-plugin", &files, Some(dir.path()));
@@ -139,6 +165,7 @@ mod tests {
         let files = vec![PluginFile {
             relative_path: "/etc/evil.txt".to_string(),
             content: "pwned".to_string(),
+            is_base64: false,
         }];
 
         let result = install_plugin("my-plugin", &files, Some(dir.path()));
@@ -159,12 +186,14 @@ mod tests {
         let first = vec![PluginFile {
             relative_path: "manifest.json".to_string(),
             content: "old".to_string(),
+            is_base64: false,
         }];
         install_plugin("my-plugin", &first, Some(dir.path())).unwrap();
 
         let second = vec![PluginFile {
             relative_path: "manifest.json".to_string(),
             content: "new".to_string(),
+            is_base64: false,
         }];
         install_plugin("my-plugin", &second, Some(dir.path())).unwrap();
 
@@ -172,5 +201,38 @@ mod tests {
             std::fs::read_to_string(dir.path().join("my-plugin").join("manifest.json")).unwrap(),
             "new"
         );
+    }
+
+    #[test]
+    fn decodes_base64_content_and_writes_raw_bytes() {
+        let dir = tempdir().unwrap();
+        // Raw bytes that are NOT valid UTF-8 (0xFF, 0xD8 are JPEG magic bytes) -- if this were
+        // written as a plain string instead of decoded, it couldn't round-trip correctly.
+        let raw_bytes: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
+        let encoded = base64::engine::general_purpose::STANDARD.encode(raw_bytes);
+        let files = vec![PluginFile {
+            relative_path: "icon.png".to_string(),
+            content: encoded,
+            is_base64: true,
+        }];
+
+        install_plugin("my-plugin", &files, Some(dir.path())).unwrap();
+
+        let written = std::fs::read(dir.path().join("my-plugin").join("icon.png")).unwrap();
+        assert_eq!(written, raw_bytes);
+    }
+
+    #[test]
+    fn rejects_invalid_base64_content() {
+        let dir = tempdir().unwrap();
+        let files = vec![PluginFile {
+            relative_path: "icon.png".to_string(),
+            content: "not valid base64!!!".to_string(),
+            is_base64: true,
+        }];
+
+        let result = install_plugin("my-plugin", &files, Some(dir.path()));
+
+        assert!(result.is_err());
     }
 }

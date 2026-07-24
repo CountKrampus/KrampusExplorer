@@ -413,11 +413,20 @@ id is already present in the plugins directory. This is core-app UI, not a plugi
 behind any permission, since the core app already has unrestricted filesystem access.
 
 **How it works:** the app fetches `marketplace.json` and each installed plugin's `manifest.json`
-+ entry file straight from `raw.githubusercontent.com` on the `master` branch (always the latest
-commit, not pinned to any release tag), then calls a new `install_plugin` Tauri command that
-writes those two files into a new subdirectory of the plugins directory named after the plugin's
-`id`. Existing files at that path are overwritten. After a successful install, plugin loading
-re-runs immediately — no app restart needed, same as toggling a plugin on/off in the list above.
++ entry file (+ `icon.png`, if one exists — a 404 there just means the plugin has no icon, not an
+install failure) straight from `raw.githubusercontent.com` on the `master` branch (always the
+latest commit, not pinned to any release tag), then calls the `install_plugin` Tauri command,
+which writes those files into a new subdirectory of the plugins directory named after the
+plugin's `id`. `icon.png` is binary, so it's fetched as an `ArrayBuffer`, base64-encoded in the
+browser, and passed with `isBase64: true` — `install_plugin` decodes it back to raw bytes before
+writing (a plain JSON string can't carry arbitrary binary data). Existing files at that path are
+overwritten. After a successful install, plugin loading re-runs immediately — no app restart
+needed, same as toggling a plugin on/off in the list above.
+
+Because the marketplace always reads from the live GitHub repo, not your local working copy, a
+plugin (or an icon) added to `examples/plugins/` only shows up in **your own** running app once
+those changes are actually pushed to `origin/master` — running a local dev build against
+uncommitted or unpushed local changes won't make them appear here.
 
 **`marketplace.json` format:**
 
