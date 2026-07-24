@@ -1,7 +1,7 @@
 use crate::progress::{write_progress, RecoveryProgress, RecoveryStatus};
-use crate::signatures::{
-    find_earliest_start, find_extraction_length, FileType, MAX_START_MARKER_LEN,
-};
+use crate::signatures::FileType;
+#[cfg(windows)]
+use crate::signatures::{find_earliest_start, find_extraction_length, MAX_START_MARKER_LEN};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -67,6 +67,7 @@ fn total_bytes_for_drive(drive: &str) -> Result<u64, String> {
         .ok_or_else(|| format!("Could not determine the size of drive '{drive}'"))
 }
 
+#[cfg(windows)]
 fn write_extracted_file(
     destination: &str,
     file_type: FileType,
