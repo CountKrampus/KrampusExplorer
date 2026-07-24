@@ -137,6 +137,13 @@ pub fn get_system_drive() -> Option<String> {
 /// `window.hwnd()` returns a `windows::Win32::Foundation::HWND` (a tuple struct wrapping a raw
 /// pointer); `.0 as isize` converts it to a `Send`-able integer that can cross into the
 /// `spawn_blocking` closure, then back to a pointer-typed HWND inside `format_drive` itself.
+///
+/// `tauri::WebviewWindow::hwnd()` only exists under `#[cfg(windows)]` in the Tauri crate itself
+/// (it's a Win32-specific handle type), so this command needs its own platform split -- the
+/// non-Windows build can't call it at all, not even to immediately error, since the method isn't
+/// present to call. `explorer_filesystem::format_drive` already has its own `#[cfg(not(windows))]`
+/// fallback that ignores the hwnd argument entirely, so the non-Windows path here just passes `0`.
+#[cfg(windows)]
 #[tauri::command]
 pub async fn format_drive(
     window: tauri::WebviewWindow,
@@ -148,6 +155,17 @@ pub async fn format_drive(
         .0 as isize;
 
     tauri::async_runtime::spawn_blocking(move || explorer_filesystem::format_drive(&drive, hwnd))
+        .await
+        .map_err(|e| format!("Format task panicked: {e}"))?
+}
+
+#[cfg(not(windows))]
+#[tauri::command]
+pub async fn format_drive(
+    _window: tauri::WebviewWindow,
+    drive: String,
+) -> Result<FormatOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || explorer_filesystem::format_drive(&drive, 0))
         .await
         .map_err(|e| format!("Format task panicked: {e}"))?
 }
