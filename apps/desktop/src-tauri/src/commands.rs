@@ -58,19 +58,34 @@ pub fn list_trash_items() -> Result<Vec<TrashedItem>, String> {
     explorer_filesystem::list_trash_items()
 }
 
+/// `async` (like `format_drive` below) so a real Recycle Bin restore -- OS-level file I/O that
+/// can take a noticeable moment -- runs via `spawn_blocking` rather than stalling the command
+/// handler and freezing the whole app's UI for however long it takes.
 #[tauri::command]
-pub fn restore_trash_item(id: String) -> Result<(), String> {
-    explorer_filesystem::restore_trash_item(&id)
+pub async fn restore_trash_item(id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || explorer_filesystem::restore_trash_item(&id))
+        .await
+        .map_err(|e| format!("Restore task panicked: {e}"))?
 }
 
+/// `async` for the same reason as `restore_trash_item`.
 #[tauri::command]
-pub fn purge_trash_item(id: String) -> Result<(), String> {
-    explorer_filesystem::purge_trash_item(&id)
+pub async fn purge_trash_item(id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || explorer_filesystem::purge_trash_item(&id))
+        .await
+        .map_err(|e| format!("Purge task panicked: {e}"))?
 }
 
+/// `async` for the same reason as `restore_trash_item` -- this one especially, since it purges
+/// every item in the Recycle Bin in one call, which can mean real, multi-second-or-longer disk
+/// I/O when there are hundreds or thousands of items. A synchronous command handler here
+/// previously froze the entire app's UI for the whole duration of a large empty, not just this
+/// plugin's own panel, since it stalled the thread other IPC/UI work also depends on.
 #[tauri::command]
-pub fn empty_trash() -> Result<(), String> {
-    explorer_filesystem::empty_trash()
+pub async fn empty_trash() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(explorer_filesystem::empty_trash)
+        .await
+        .map_err(|e| format!("Empty trash task panicked: {e}"))?
 }
 
 #[tauri::command]
@@ -79,9 +94,13 @@ pub fn get_known_folder(folder: String) -> Result<Option<String>, String> {
     Ok(explorer_filesystem::get_known_folder(known))
 }
 
+/// `async` for the same reason as `empty_trash` -- can move hundreds or thousands of paths to
+/// the Recycle Bin in one call (e.g. clearing a large temp folder).
 #[tauri::command]
-pub fn delete_entries(paths: Vec<String>) -> Result<(), String> {
-    explorer_filesystem::delete_entries(&paths)
+pub async fn delete_entries(paths: Vec<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || explorer_filesystem::delete_entries(&paths))
+        .await
+        .map_err(|e| format!("Delete task panicked: {e}"))?
 }
 
 #[tauri::command]
